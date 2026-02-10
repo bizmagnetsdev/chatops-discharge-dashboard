@@ -52,29 +52,29 @@ async function getData(date: string): Promise<DashboardResponse> {
 const maskName = (name: string): string => {
     if (!name) return name;
 
-    // const parts = name.split(' ');
+    const parts = name.split(' ');
 
-    // return parts.map(part => {
-    //     // 1. Handle titles
-    //     const titleRegex = /^(Mrs\.|Mr\.|Miss\.|Dr\.|Ms\.|Er\.|Prof\.|Master\.)/i;
-    //     const titleMatch = part.match(titleRegex);
+    return parts.map(part => {
+        // 1. Handle titles
+        const titleRegex = /^(Mrs\.|Mr\.|Miss\.|Dr\.|Ms\.|Er\.|Prof\.|Master\.)/i;
+        const titleMatch = part.match(titleRegex);
 
-    //     if (titleMatch) {
-    //         const title = titleMatch[0];
-    //         if (part.length === title.length) return title;
-    //         const remaining = part.slice(title.length);
-    //         return title + maskName(remaining);
-    //     }
+        if (titleMatch) {
+            const title = titleMatch[0];
+            if (part.length === title.length) return title;
+            const remaining = part.slice(title.length);
+            return title + maskName(remaining);
+        }
 
-    //     if (part.length < 2) return part;
+        if (part.length < 2) return part;
 
-    //     if (part.length > 4) {
-    //         return part.substring(0, 2) + 'xxxx' + part.substring(part.length - 2);
-    //     } else {
-    //         return part[0] + 'xxxx' + part[part.length - 1];
-    //     }
-    // }).join(' ');
-    return name;
+        if (part.length > 4) {
+            return part.substring(0, 2) + 'xxxx' + part.substring(part.length - 2);
+        } else {
+            return part[0] + 'xxxx' + part[part.length - 1];
+        }
+    }).join(' ');
+    // return name;
 }
 
 function anonymizeData(data: DashboardResponse): DashboardResponse {
@@ -89,12 +89,12 @@ function anonymizeData(data: DashboardResponse): DashboardResponse {
     const maskWardBed = (wardBed: string) => {
         if (!wardBed) return 'xxxx';
         // Split by either '/' or '-'
-        // const parts = wardBed.split(/\/|-/);
+        const parts = wardBed.split(/\/|-/);
 
-        // if (parts.length > 1) {
-        //     // Keep the first part (Floor/Ward), replace the rest with xxxx
-        //     return `${parts[0].trim()} - xxxx`;
-        // }
+        if (parts.length > 1) {
+            // Keep the first part (Floor/Ward), replace the rest with xxxx
+            return `${parts[0].trim()} - xxxx`;
+        }
         // If no separator found, assume it's just the Floor/Ward name
         return wardBed;
     };
