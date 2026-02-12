@@ -8,9 +8,10 @@ interface LiveTimerProps {
     slaDuration: number; // in Minutes
     isExtended?: boolean; // If true, adds 30 mins
     warningMin?: number; // Minutes before SLA to show warning (Yellow)
+    showGif?: boolean; // If true, shows GIF instead of seconds
 }
 
-const LiveTimer: React.FC<LiveTimerProps> = ({ startTime, slaDuration, isExtended = false, warningMin = 15 }) => {
+const LiveTimer: React.FC<LiveTimerProps> = ({ startTime, slaDuration, isExtended = false, warningMin = 15, showGif = false }) => {
     const [secondsRemaining, setSecondsRemaining] = useState<number>(0);
     const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
     const [isOverdue, setIsOverdue] = useState<boolean>(false);
@@ -91,9 +92,13 @@ const LiveTimer: React.FC<LiveTimerProps> = ({ startTime, slaDuration, isExtende
     const isRed = colorClass.includes('red');
 
     return (
-        <span className={`font-mono text-xs ${colorClass}`}>
-            {parts.h}{parts.m}
-            <span className={isRed ? "animate-pulse inline-block" : "inline-block"}>{parts.s}</span>
+        <span className={`font-mono text-xs ${colorClass} flex items-center justify-center gap-1`}>
+            <span>{parts.h}{parts.m}</span>
+            {showGif ? (
+                <img src="/running.gif" alt="Running" className="h-4 w-auto object-contain inline-block" />
+            ) : (
+                <span className={isRed ? "animate-pulse inline-block" : "inline-block"}>{parts.s}</span>
+            )}
         </span>
     );
 };

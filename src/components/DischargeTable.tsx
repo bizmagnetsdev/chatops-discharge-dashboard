@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { Workflow } from '@/types/dashboard';
 import { formatTime, getStatusColor, parseDelayMinutes, calculateCompletionTime, formatDuration, formatDelayString, calculateBillDelay } from '@/utils/dateUtils';
@@ -20,6 +22,15 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
     const reportDate = workflow.reportDate ? parseISO(workflow.reportDate) : new Date();
     const today = startOfDay(new Date());
     const isPastDate = isBefore(startOfDay(reportDate), today);
+
+
+    const [showGif, setShowGif] = React.useState(true);
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            setShowGif(prev => !prev);
+        }, 3000); // 3 seconds interval for GIF/Timer toggle
+        return () => clearInterval(interval);
+    }, []);
 
     // Merge timeline and SLA by ticketId
     const rawMergedData = timeline.map(item => {
@@ -81,9 +92,9 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
     /*
     React.useEffect(() => {
         if (!tableContainerRef.current) return;
-
+    
         let targetId: string | number = '';
-
+    
         if (filterStatus === 'inprogress' && ongoing.length > 0) {
             targetId = ongoing[0].ticketId;
         } else if (filterStatus === 'delayed') {
@@ -97,7 +108,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
             tableContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
-
+    
         if (targetId) {
             const element = document.getElementById(`row-${targetId}`);
             if (element) {
@@ -163,18 +174,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
 
     return (
         <div className="glass-panel rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-white/60 flex flex-col h-full max-h-[80vh]">
-            {/* Target TAT Header */}
-            <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 flex items-center justify-end gap-6 text-sm font-medium text-slate-600">
-                <span className="uppercase tracking-wider text-xs font-bold text-slate-500">Target TAT:</span>
-                <div className="flex items-center gap-2">
-                    <span className="text-slate-900">Cash:</span>
-                    <span className="font-mono font-bold text-blue-600">{cashTarget}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-slate-900">Insurance/TPA:</span>
-                    <span className="font-mono font-bold text-purple-600">{insuranceTarget}</span>
-                </div>
-            </div>
+            {/* Target TAT Header Removed - Moved to Footer */}
 
             <div ref={tableContainerRef} className="overflow-auto flex-1 relative">
                 <table className="w-full text-sm border-separate border-spacing-0">
@@ -187,12 +187,12 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     <span className="ml-1 text-slate-700 font-normal">(UHID) ({mergedData.length})</span>
                                 </div>
                             </th>
-                            <th className="p-2 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[100px] text-center">
+                            <th className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[100px] text-center align-middle">
                                 <div className="flex items-center justify-center h-full">
                                     Ward & Bed
                                 </div>
                             </th>
-                            <th className="p-2 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[140px] text-center">
+                            <th className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[140px] text-center align-middle">
                                 <div className="flex items-center justify-center h-full">
                                     Overall Time
                                     {/* {ongoing.length > 0 && <span className="text-yellow-600 ml-1">({ongoing.length})</span>} */}
@@ -200,12 +200,13 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                             </th>
 
                             {!isDemo && (
-                                <th className="p-2 bg-slate-100 border-b border-slate-200 min-w-[120px] text-center">
-                                    <div className="flex justify-center items-center">
-                                        Bill Received
+                                <th className="p-1 bg-slate-100 border-b border-slate-200 min-w-[100px] text-center align-middle">
+                                    <div className="flex items-center justify-center h-full">
+                                        <span>Bill Received</span>
                                         {(() => {
                                             const stats = getDeptStats('Bill Received');
-                                            if (stats.pending > 0) return <span className="text-yellow-600 ml-1">({stats.pending})</span>;
+                                            // if (stats.pending > 0) return <span className="text-yellow-600 font-bold ml-1">-{stats.pending}</span>;
+                                            return null;
                                             return null;
                                         })()}
                                     </div>
@@ -218,20 +219,30 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 const isInsurance = dept.toUpperCase() === 'INSURANCE';
                                 const headerText = isNurse ? 'ROOM STATUS(NURSE)' : (isInsurance ? 'INSURANCE/TPA' : dept);
                                 return (
-                                    <th key={dept} className={clsx("p-2 bg-slate-100 border-b border-slate-200 min-w-[110px] text-center", !isNurse && "truncate")}>
-                                        <div className="flex items-center justify-center gap-1">
+                                    <th key={dept} className={clsx(
+                                        "bg-slate-100 border-b border-slate-200 text-center align-middle",
+                                        "p-1 min-w-[110px]",
+                                        !isNurse && "truncate"
+                                    )}>
+                                        <div className="flex items-center justify-center h-full w-full">
                                             {isNurse ? (
-                                                <div className="relative group cursor-default">
-                                                    {headerText}
+                                                <div className="relative group cursor-default flex items-center justify-center w-full px-1">
+                                                    <span className="whitespace-normal break-words leading-tight">
+                                                        ROOM STATUS <span className="text-[10px] text-slate-500 font-normal">(NURSE)</span>
+                                                    </span>
+                                                    {/* {stats.pending > 0 && <span className="text-yellow-600 font-bold ml-1 whitespace-nowrap">-{stats.pending}</span>} */}
+
                                                     <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-slate-800 text-white text-xs rounded shadow-lg hidden group-hover:block z-50 whitespace-nowrap font-normal normal-case tracking-normal">
                                                         Room Vacated Status
                                                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-800"></div>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                headerText
+                                                <div className="flex items-center justify-center w-full px-1">
+                                                    <span className="whitespace-normal break-words">{headerText}</span>
+                                                    {/* {stats.pending > 0 && <span className="text-yellow-600 font-bold ml-1 whitespace-nowrap">-{stats.pending}</span>} */}
+                                                </div>
                                             )}
-                                            {stats.pending > 0 && <span className="text-yellow-600">({stats.pending})</span>}
                                         </div>
                                     </th>
                                 );
@@ -269,20 +280,22 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     {/* Merged Overall Time Taken & Delay */}
                                     <td className="p-2 font-mono align-top text-center">
                                         {isPending ? (
-                                            <div className="flex flex-col space-y-1 items-center">
-                                                <span className="text-xs text-blue-600 font-bold whitespace-nowrap block mb-1">
+                                            <div className="flex flex-col space-y-1 items-center min-h-[40px] justify-center">
+                                                <span className="text-xs text-blue-600 font-bold whitespace-nowrap block mt-1">
                                                     {formatTime(row.dischargeStart)}
                                                 </span>
                                                 {isPastDate ? (
                                                     null
                                                 ) : (
-                                                    <>
-                                                        <img src="/running.gif" alt="Running" className="w-6 h-6 my-1 object-contain" />
-                                                        <LiveTimer
-                                                            startTime={row.dischargeStart}
-                                                            slaDuration={parseInt(row.targetTotalTat) || 0}
-                                                        />
-                                                    </>
+                                                    <div className="h-6 flex items-center justify-center w-full">
+                                                        <div className="h-6 flex items-center justify-center w-full">
+                                                            <LiveTimer
+                                                                startTime={row.dischargeStart}
+                                                                slaDuration={parseInt(row.targetTotalTat) || 0}
+                                                                showGif={showGif}
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 )}
                                             </div>
                                         ) : (
@@ -332,13 +345,17 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                                             </span>
                                                             {isPastDate ? null : (
                                                                 <>
-                                                                    <img src="/running.gif" alt="Running" className="w-6 h-6 my-1 object-contain" />
-                                                                    <LiveTimer
-                                                                        startTime={row.firstDeptAck!}
-                                                                        slaDuration={15}
-                                                                        warningMin={5} // 15m SLA: 0-10 Green, 10-15 Yellow
-                                                                        isExtended={false}
-                                                                    />
+                                                                    {isPastDate ? null : (
+                                                                        <div className="h-6 flex items-center justify-center w-full">
+                                                                            <LiveTimer
+                                                                                startTime={row.firstDeptAck!}
+                                                                                slaDuration={15}
+                                                                                warningMin={5} // 15m SLA: 0-10 Green, 10-15 Yellow
+                                                                                isExtended={false}
+                                                                                showGif={showGif}
+                                                                            />
+                                                                        </div>
+                                                                    )}
                                                                 </>
                                                             )}
                                                         </div>
@@ -407,14 +424,14 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                                                 {isPastDate ? (
                                                                     null
                                                                 ) : (
-                                                                    <>
-                                                                        <img src="/running.gif" alt="Running" className="w-6 h-6 my-1 object-contain" />
+                                                                    <div className="h-6 flex items-center justify-center w-full">
                                                                         <LiveTimer
                                                                             startTime={startTime}
                                                                             slaDuration={slaMins}
                                                                             isExtended={!!moreTimeClick}
+                                                                            showGif={showGif}
                                                                         />
-                                                                    </>
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         </td>
@@ -611,6 +628,19 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                     </tbody>
                 </table>
             </div >
+
+            {/* Target TAT Footer */}
+            <div className="bg-slate-50 border-t border-slate-200 px-4 py-2 flex items-center justify-end gap-6 text-sm font-medium text-slate-600">
+                <span className="uppercase tracking-wider text-xs font-bold text-slate-500">Target TAT:</span>
+                <div className="flex items-center gap-2">
+                    <span className="text-slate-900">Cash:</span>
+                    <span className="font-mono font-bold text-blue-600">{cashTarget}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-slate-900">Insurance/TPA:</span>
+                    <span className="font-mono font-bold text-purple-600">{insuranceTarget}</span>
+                </div>
+            </div>
         </div >
     );
 };
