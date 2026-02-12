@@ -7,9 +7,10 @@ interface LiveTimerProps {
     startTime: string; // ISO string
     slaDuration: number; // in Minutes
     isExtended?: boolean; // If true, adds 30 mins
+    warningMin?: number; // Minutes before SLA to show warning (Yellow)
 }
 
-const LiveTimer: React.FC<LiveTimerProps> = ({ startTime, slaDuration, isExtended = false }) => {
+const LiveTimer: React.FC<LiveTimerProps> = ({ startTime, slaDuration, isExtended = false, warningMin = 15 }) => {
     const [secondsRemaining, setSecondsRemaining] = useState<number>(0);
     const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
     const [isOverdue, setIsOverdue] = useState<boolean>(false);
@@ -71,7 +72,7 @@ const LiveTimer: React.FC<LiveTimerProps> = ({ startTime, slaDuration, isExtende
             colorClass = 'text-slate-700 font-bold';
         }
     } else {
-        const warningThreshold = slaSeconds - (15 * 60); // SLA - 15 mins
+        const warningThreshold = slaSeconds - (warningMin * 60); // SLA - warning window
         const extendedSeconds = isExtended ? slaSeconds + (30 * 60) : slaSeconds;
 
         if (elapsedSeconds < warningThreshold) {

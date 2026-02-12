@@ -21,6 +21,7 @@ async function getData(date: string, flowName: string): Promise<DashboardRespons
       if (!baseUrl) {
         throw new Error('BASE_URL is not defined in environment variables');
       }
+      console.log(`[Debug] Fetching from: ${baseUrl} with Key: ${apiKey?.substring(0, 4)}...`);
       const res = await fetch(`${baseUrl}/dev/discharge-tat/get?workflowName=${workflowName}&date=${date}`, {
         headers: {
           'x-api-key': apiKey,
