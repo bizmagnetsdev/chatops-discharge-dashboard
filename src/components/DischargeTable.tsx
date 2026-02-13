@@ -30,7 +30,58 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
             setShowGif(prev => !prev);
         }, 3000); // 3 seconds interval for GIF/Timer toggle
         return () => clearInterval(interval);
-    }, []);
+    }, []); // Moved the dependency array here to close the useEffect correctly
+
+    const [sortConfig, setSortConfig] = React.useState<{ key: string | null }>({ key: null });
+    const [pendingSortDept, setPendingSortDept] = React.useState<string | null>(null);
+
+    const handleSort = (key: string) => {
+        setSortConfig(current => {
+            if (current.key === key) {
+                return { key: null }; // Reset to default
+            }
+            return { key }; // Set sort
+        });
+        setPendingSortDept(null); // Reset pending sort when column sort is used
+    };
+
+    const handlePendingSort = (dept: string) => {
+        setPendingSortDept(prev => prev === dept ? null : dept);
+        setSortConfig({ key: null }); // Reset column sort when pending sort is used
+    };
+
+    const getSortValue = (row: any, key: string) => {
+        let valStr = '';
+        if (key === 'Overall Time') {
+            valStr = row.sla?.overallDelay || '';
+        } else if (key === 'Bill Received') {
+            // Better to parse row data directly for Bill Received Delay or rely on row.sla?.firstDeptDelay if reliable.
+            // Actually, based on logic below:
+            const isInitiated = !!row.firstDeptAck;
+            const isCompleted = !!row.firstDeptAckSuccess;
+            if (isInitiated && !isCompleted) {
+                // Pending - treat as low priority or infinity?
+                return -Infinity;
+            }
+            // For completed, get delay string
+            if (isCompleted) {
+                const billDelay = calculateBillDelay(row.firstDeptAck, row.firstDeptAckSuccess);
+                valStr = billDelay;
+            }
+        } else {
+            // Department
+            const deptIndex = configuredDepartments.indexOf(key);
+            if (deptIndex === 0) {
+                valStr = row.sla?.firstDeptDelay || '';
+            } else {
+                valStr = row.sla?.departmentDelays?.[key] || '';
+            }
+        }
+
+        if (!valStr || valStr === 'Pending' || valStr === 'NA') return -Infinity; // Put Pending/NA at bottom
+
+        return parseDelayMinutes(valStr);
+    };
 
     // Merge timeline and SLA by ticketId
     const rawMergedData = timeline.map(item => {
@@ -85,7 +136,38 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
         return delayB - delayA; // Descending
     });
 
-    const mergedData = [...ongoing, ...sortedCompleted];
+    const mergedData = React.useMemo(() => {
+        let data = [...ongoing, ...sortedCompleted];
+
+        if (pendingSortDept) {
+            data.sort((a, b) => {
+                const getIsPending = (row: any, dept: string) => {
+                    if (dept === 'Overall Time') return row.sla?.overallDelay === 'Pending';
+                    if (dept === 'Bill Received') return !!row.firstDeptAck && !row.firstDeptAckSuccess;
+
+                    const deptIndex = configuredDepartments.indexOf(dept);
+                    const isInitiated = deptIndex === 0 ? !!row.firstDeptAck : !!row.departmentInitiatedTimes?.[dept];
+                    const isCompleted = deptIndex === 0 ? !!row.firstDeptDone : !!row.departmentCompletionTimes?.[dept];
+                    return isInitiated && !isCompleted;
+                };
+
+                const isAPending = getIsPending(a, pendingSortDept);
+                const isBPending = getIsPending(b, pendingSortDept);
+
+                if (isAPending && !isBPending) return -1;
+                if (!isAPending && isBPending) return 1;
+                return 0;
+            });
+        }
+        else if (sortConfig.key) {
+            data.sort((a, b) => {
+                const valA = getSortValue(a, sortConfig.key!);
+                const valB = getSortValue(b, sortConfig.key!);
+                return valB - valA; // Descending (High positive first, Low negative last)
+            });
+        }
+        return data;
+    }, [ongoing, sortedCompleted, sortConfig, pendingSortDept, configuredDepartments]);
 
     // Scroll Logic
     // Scroll Logic - Disabled per user request
@@ -178,13 +260,14 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
 
             <div ref={tableContainerRef} className="overflow-auto flex-1 relative">
                 <table className="w-full text-sm border-separate border-spacing-0">
-                    <thead className="bg-slate-100 text-slate-500 font-semibold sticky top-0 z-10 shadow-sm">
-                        <tr className="sticky top-0 z-20 bg-slate-100 border-b border-slate-200 text-center text-[10px] uppercase tracking-wider">
+                    <thead className="bg-slate-100 text-slate-500 font-semibold shadow-sm z-10">
+                        <tr className="sticky top-0 z-30 bg-slate-100 border-b border-slate-200 text-center text-[10px] uppercase tracking-wider h-12">
 
                             <th className="p-2 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[200px] text-center">
                                 <div className="flex flex-col items-center">
                                     <span>PATIENT NAME</span>
-                                    <span className="ml-1 text-slate-700 font-normal">(UHID) ({mergedData.length})</span>
+                                    {/* <span className="ml-1 text-slate-700 font-normal">(UHID) ({mergedData.length})</span> */}
+                                    <span className="ml-1 text-slate-700 font-normal">(UHID)</span>
                                 </div>
                             </th>
                             <th className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[100px] text-center align-middle">
@@ -192,21 +275,28 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     Ward & Bed
                                 </div>
                             </th>
-                            <th className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[140px] text-center align-middle">
-                                <div className="flex items-center justify-center h-full">
+                            <th
+                                className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[140px] text-center align-middle cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                                onClick={() => handleSort('Overall Time')}
+                            >
+                                <div className="flex items-center justify-center h-full gap-1">
                                     Overall Time
+                                    {sortConfig.key === 'Overall Time' && <span className="text-[10px] text-slate-500">▼</span>}
                                     {/* {ongoing.length > 0 && <span className="text-yellow-600 ml-1">({ongoing.length})</span>} */}
                                 </div>
                             </th>
 
                             {!isDemo && (
-                                <th className="p-1 bg-slate-100 border-b border-slate-200 min-w-[100px] text-center align-middle">
-                                    <div className="flex items-center justify-center h-full">
+                                <th
+                                    className="p-1 bg-slate-100 border-b border-slate-200 min-w-[100px] text-center align-middle cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                                    onClick={() => handleSort('Bill Received')}
+                                >
+                                    <div className="flex items-center justify-center h-full gap-1">
                                         <span>Bill Received</span>
+                                        {sortConfig.key === 'Bill Received' && <span className="text-[10px] text-slate-500">▼</span>}
                                         {(() => {
                                             const stats = getDeptStats('Bill Received');
                                             // if (stats.pending > 0) return <span className="text-yellow-600 font-bold ml-1">-{stats.pending}</span>;
-                                            return null;
                                             return null;
                                         })()}
                                     </div>
@@ -219,11 +309,14 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 const isInsurance = dept.toUpperCase() === 'INSURANCE';
                                 const headerText = isNurse ? 'ROOM STATUS(NURSE)' : (isInsurance ? 'INSURANCE/TPA' : dept);
                                 return (
-                                    <th key={dept} className={clsx(
-                                        "bg-slate-100 border-b border-slate-200 text-center align-middle",
-                                        "p-1 min-w-[110px]",
-                                        !isNurse && "truncate"
-                                    )}>
+                                    <th key={dept}
+                                        className={clsx(
+                                            "bg-slate-100 border-b border-slate-200 text-center align-middle cursor-pointer hover:bg-slate-200 transition-colors select-none",
+                                            "p-1 min-w-[110px]",
+                                            !isNurse && "truncate"
+                                        )}
+                                        onClick={() => handleSort(dept)}
+                                    >
                                         <div className="flex items-center justify-center h-full w-full">
                                             {isNurse ? (
                                                 <div className="relative group cursor-default flex items-center justify-center w-full px-1">
@@ -238,13 +331,66 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="flex items-center justify-center w-full px-1">
+                                                <div className="flex items-center justify-center w-full px-1 gap-1">
                                                     <span className="whitespace-normal break-words">{headerText}</span>
+                                                    {sortConfig.key === dept && <span className="text-[10px] text-slate-500">▼</span>}
                                                     {/* {stats.pending > 0 && <span className="text-yellow-600 font-bold ml-1 whitespace-nowrap">-{stats.pending}</span>} */}
                                                 </div>
                                             )}
                                         </div>
                                     </th>
+                                );
+                            })}
+                        </tr>
+
+                        {/* Pending Count Row - Moved to Header */}
+                        <tr className="bg-slate-50 font-bold text-slate-900 border-b border-slate-200 sticky top-12 z-20 shadow-sm h-9">
+                            <td
+                                colSpan={2}
+                                className="p-2 text-center text-slate-500 uppercase tracking-widest text-xs"
+                            >
+                                Pending Count
+                            </td>
+                            {/* Overall Time Pending */}
+                            <td className="p-2 text-center cursor-pointer hover:bg-slate-200 transition-colors" onClick={() => handlePendingSort('Overall Time')}>
+                                {ongoing.length > 0 ? (
+                                    <span className={clsx("font-mono text-sm", pendingSortDept === 'Overall Time' ? "text-slate-900 underline decoration-2 underline-offset-2" : "text-yellow-600")}>
+                                        {ongoing.length}
+                                    </span>
+                                ) : (
+                                    <span className="text-slate-400 font-mono">-</span>
+                                )}
+                            </td>
+
+                            {/* Bill Received Pending */}
+                            {!isDemo && (
+                                <td className="p-2 text-center cursor-pointer hover:bg-slate-200 transition-colors" onClick={() => handlePendingSort('Bill Received')}>
+                                    {(() => {
+                                        const pendingCount = getDeptStats('Bill Received').pending;
+                                        return pendingCount > 0 ? (
+                                            <span className={clsx("font-mono text-sm", pendingSortDept === 'Bill Received' ? "text-slate-900 underline decoration-2 underline-offset-2" : "text-yellow-600")}>
+                                                {pendingCount}
+                                            </span>
+                                        ) : (
+                                            <span className="text-slate-400 font-mono">-</span>
+                                        );
+                                    })()}
+                                </td>
+                            )}
+
+                            {/* Department Pendings */}
+                            {configuredDepartments.map((dept) => {
+                                const count = getDeptStats(dept).pending;
+                                return (
+                                    <td key={dept} className="p-2 text-center cursor-pointer hover:bg-slate-200 transition-colors" onClick={() => handlePendingSort(dept)}>
+                                        {count > 0 ? (
+                                            <span className={clsx("font-mono text-sm", pendingSortDept === dept ? "text-slate-900 underline decoration-2 underline-offset-2" : "text-yellow-600")}>
+                                                {count}
+                                            </span>
+                                        ) : (
+                                            <span className="text-slate-400 font-mono">-</span>
+                                        )}
+                                    </td>
                                 );
                             })}
                         </tr>
@@ -329,7 +475,6 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                         )}
                                     </td>
 
-                                    {/* Bill Received Column */}
                                     {/* Bill Received Column */}
                                     {!isDemo && (
                                         <td className="p-2 text-center align-top">
@@ -625,22 +770,46 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 );
                             })}
                         </tr>
+                        <tr className="bg-slate-100 font-bold text-slate-900 border-t border-slate-200">
+                            <td colSpan={3} className="p-2 text-left text-xs font-bold text-slate-500 uppercase tracking-wider pl-4">
+                                <div className="flex items-center gap-6">
+                                    <span>Target TAT:</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-slate-900">Cash:</span>
+                                        <span className="font-mono font-bold text-blue-600">{cashTarget}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-slate-900">Insurance/TPA:</span>
+                                        <span className="font-mono font-bold text-purple-600">{insuranceTarget}</span>
+                                    </div>
+                                </div>
+                            </td>
+
+                            {!isDemo && (
+                                <td className="p-2 text-center text-slate-500 font-mono text-xs font-bold">
+                                    {(() => {
+                                        const h = Math.floor(15 / 60);
+                                        const m = 15 % 60;
+                                        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                                    })()}
+                                </td>
+                            )}
+
+                            {configuredDepartments.map((dept) => {
+                                const slaMins = workflow.departmentSlaConfig?.[dept] ?? 0;
+                                const h = Math.floor(slaMins / 60);
+                                const m = slaMins % 60;
+                                const formatted = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                                return (
+                                    <td key={dept} className="p-2 text-center text-slate-500 font-mono text-xs font-bold">
+                                        {slaMins > 0 ? formatted : '-'}
+                                    </td>
+                                );
+                            })}
+                        </tr>
                     </tbody>
                 </table>
             </div >
-
-            {/* Target TAT Footer */}
-            <div className="bg-slate-50 border-t border-slate-200 px-4 py-2 flex items-center justify-end gap-6 text-sm font-medium text-slate-600">
-                <span className="uppercase tracking-wider text-xs font-bold text-slate-500">Target TAT:</span>
-                <div className="flex items-center gap-2">
-                    <span className="text-slate-900">Cash:</span>
-                    <span className="font-mono font-bold text-blue-600">{cashTarget}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-slate-900">Insurance/TPA:</span>
-                    <span className="font-mono font-bold text-purple-600">{insuranceTarget}</span>
-                </div>
-            </div>
         </div >
     );
 };

@@ -109,26 +109,36 @@ export const calculateDelay = (target: string, actual: string): number => {
 export const parseDelayMinutes = (delayString: string | null | undefined): number => {
     if (!delayString || delayString === 'Pending' || delayString === 'NA') return 0;
 
-    // Handle "plus X mins" or "+ X mins"
-    if (delayString.includes('plus') || delayString.includes('+')) {
-        const match = delayString.match(/\d+/);
-        return match ? parseInt(match[0], 10) : 0;
+    let totalMinutes = 0;
+
+    // Check for Hours
+    const hoursMatch = delayString.match(/(\d+)\s*h/i);
+    if (hoursMatch) {
+        totalMinutes += parseInt(hoursMatch[1], 10) * 60;
     }
 
-    // Handle "-X mins"
-    if (delayString.includes('-')) {
-        const match = delayString.match(/-?\d+/);
-        return match ? parseInt(match[0], 10) : 0;
+    // Check for Minutes (matches "43m", "43 mins", "43 m")
+    // be careful not to match the 'h' number if it was just "1h" without mins, but regex below looks for 'm'
+    const minsMatch = delayString.match(/(\d+)\s*m/i);
+    // If we have hours, the minutes might be the second number
+    // E.g. "1h:43m" -> hoursMatch=1, minsMatch=43
+    if (minsMatch) {
+        totalMinutes += parseInt(minsMatch[1], 10);
+    } else {
+        // If no explicit 'h' or 'm' labels, fall back to simple number parsing (existing logic)
+        // But only if we didn't match hours. If we matched hours but no mins, total is just hours.
+        if (!hoursMatch) {
+            const simpleMatch = delayString.match(/(\d+)/);
+            if (simpleMatch) totalMinutes = parseInt(simpleMatch[0], 10);
+        }
     }
 
-    // Handle "X mins" (positive number without plus, treated as delay)
-    // Avoid parsing "0 mins" here if we want strict 0
-    const match = delayString.match(/\d+/);
-    if (match) {
-        return parseInt(match[0], 10);
+    // Handle Sign
+    if (delayString.includes('-') || delayString.includes('minus')) {
+        return -totalMinutes;
     }
 
-    return 0;
+    return totalMinutes;
 };
 
 export const isDelayed = (delayString: string): boolean => {
