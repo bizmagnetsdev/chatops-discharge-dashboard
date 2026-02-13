@@ -261,9 +261,9 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
             <div ref={tableContainerRef} className="overflow-auto flex-1 relative">
                 <table className="w-full text-sm border-separate border-spacing-0">
                     <thead className="bg-slate-100 text-slate-500 font-semibold shadow-sm z-10">
-                        <tr className="sticky top-0 z-30 bg-slate-100 border-b border-slate-200 text-center text-[10px] uppercase tracking-wider h-12">
+                        <tr className="sticky top-0 z-30 bg-slate-100 border-b border-slate-200 text-center text-[10px] uppercase tracking-wider h-10">
 
-                            <th className="p-2 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[200px] text-center">
+                            <th className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[200px] text-center">
                                 <div className="flex flex-col items-center">
                                     <span>PATIENT NAME</span>
                                     {/* <span className="ml-1 text-slate-700 font-normal">(UHID) ({mergedData.length})</span> */}
@@ -344,35 +344,49 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                         </tr>
 
                         {/* Pending Count Row - Moved to Header */}
-                        <tr className="bg-slate-50 font-bold text-slate-900 border-b border-slate-200 sticky top-12 z-20 shadow-sm h-9">
+                        <tr className="bg-slate-50 font-bold text-slate-900 border-b border-slate-200 sticky top-10 z-20 shadow-sm h-7">
                             <td
                                 colSpan={2}
-                                className="p-2 text-center text-slate-500 uppercase tracking-widest text-xs"
+                                className="p-1 text-center text-slate-500 uppercase tracking-widest text-[10px]"
                             >
                                 Pending Count
                             </td>
                             {/* Overall Time Pending */}
-                            <td className="p-2 text-center cursor-pointer hover:bg-slate-200 transition-colors" onClick={() => handlePendingSort('Overall Time')}>
+                            <td
+                                className={`p-1 text-center cursor-pointer hover:bg-slate-100 transition-colors ${pendingSortDept === 'Overall Time' ? 'bg-yellow-50' : ''}`}
+                                onClick={() => handlePendingSort('Overall Time')}
+                                title="Click to sort by pending items"
+                            >
                                 {ongoing.length > 0 ? (
-                                    <span className={clsx("font-mono text-sm", pendingSortDept === 'Overall Time' ? "text-slate-900 underline decoration-2 underline-offset-2" : "text-yellow-600")}>
+                                    <span className={clsx(
+                                        "font-mono text-xs",
+                                        pendingSortDept === 'Overall Time' ? "text-slate-900 font-bold underline decoration-yellow-500 underline-offset-4" : "text-yellow-600"
+                                    )}>
                                         {ongoing.length}
                                     </span>
                                 ) : (
-                                    <span className="text-slate-400 font-mono">-</span>
+                                    <span className="text-slate-400 font-mono text-[10px]">-</span>
                                 )}
                             </td>
 
                             {/* Bill Received Pending */}
                             {!isDemo && (
-                                <td className="p-2 text-center cursor-pointer hover:bg-slate-200 transition-colors" onClick={() => handlePendingSort('Bill Received')}>
+                                <td
+                                    className={`p-1 text-center cursor-pointer hover:bg-slate-100 transition-colors ${pendingSortDept === 'Bill Received' ? 'bg-yellow-50' : ''}`}
+                                    onClick={() => handlePendingSort('Bill Received')}
+                                    title="Click to sort by pending items"
+                                >
                                     {(() => {
                                         const pendingCount = getDeptStats('Bill Received').pending;
                                         return pendingCount > 0 ? (
-                                            <span className={clsx("font-mono text-sm", pendingSortDept === 'Bill Received' ? "text-slate-900 underline decoration-2 underline-offset-2" : "text-yellow-600")}>
+                                            <span className={clsx(
+                                                "font-mono text-xs",
+                                                pendingSortDept === 'Bill Received' ? "text-slate-900 font-bold underline decoration-yellow-500 underline-offset-4" : "text-yellow-600"
+                                            )}>
                                                 {pendingCount}
                                             </span>
                                         ) : (
-                                            <span className="text-slate-400 font-mono">-</span>
+                                            <span className="text-slate-400 font-mono text-[10px]">-</span>
                                         );
                                     })()}
                                 </td>
@@ -382,13 +396,21 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                             {configuredDepartments.map((dept) => {
                                 const count = getDeptStats(dept).pending;
                                 return (
-                                    <td key={dept} className="p-2 text-center cursor-pointer hover:bg-slate-200 transition-colors" onClick={() => handlePendingSort(dept)}>
+                                    <td
+                                        key={dept}
+                                        className={`p-1 text-center cursor-pointer hover:bg-slate-100 transition-colors ${pendingSortDept === dept ? 'bg-yellow-50' : ''}`}
+                                        onClick={() => handlePendingSort(dept)}
+                                        title="Click to sort by pending items"
+                                    >
                                         {count > 0 ? (
-                                            <span className={clsx("font-mono text-sm", pendingSortDept === dept ? "text-slate-900 underline decoration-2 underline-offset-2" : "text-yellow-600")}>
+                                            <span className={clsx(
+                                                "font-mono text-xs",
+                                                pendingSortDept === dept ? "text-slate-900 font-bold underline decoration-yellow-500 underline-offset-4" : "text-yellow-600"
+                                            )}>
                                                 {count}
                                             </span>
                                         ) : (
-                                            <span className="text-slate-400 font-mono">-</span>
+                                            <span className="text-slate-400 font-mono text-[10px]">-</span>
                                         )}
                                     </td>
                                 );
@@ -770,8 +792,8 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 );
                             })}
                         </tr>
-                        <tr className="bg-slate-100 font-bold text-slate-900 border-t border-slate-200">
-                            <td colSpan={3} className="p-2 text-left text-xs font-bold text-slate-500 uppercase tracking-wider pl-4">
+                        <tr className="bg-slate-100 font-bold text-slate-900 border-t border-slate-200 sticky bottom-0 z-20 shadow-inner">
+                            <td colSpan={3} className="p-1 text-left text-xs font-bold text-slate-500 uppercase tracking-wider pl-4">
                                 <div className="flex items-center gap-6">
                                     <span>Target TAT:</span>
                                     <div className="flex items-center gap-2">
@@ -786,7 +808,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                             </td>
 
                             {!isDemo && (
-                                <td className="p-2 text-center text-slate-500 font-mono text-xs font-bold">
+                                <td className="p-1 text-center text-slate-500 font-mono text-xs font-bold">
                                     {(() => {
                                         const h = Math.floor(15 / 60);
                                         const m = 15 % 60;
@@ -801,7 +823,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 const m = slaMins % 60;
                                 const formatted = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
                                 return (
-                                    <td key={dept} className="p-2 text-center text-slate-500 font-mono text-xs font-bold">
+                                    <td key={dept} className="p-1 text-center text-slate-500 font-mono text-xs font-bold">
                                         {slaMins > 0 ? formatted : '-'}
                                     </td>
                                 );
