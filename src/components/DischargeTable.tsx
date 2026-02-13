@@ -244,14 +244,40 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
     };
 
     // Calculate Target TAT for Cash and Insurance
+    const formatDuration = (str: string) => {
+        const mins = parseInt(str) || 0;
+        if (!mins) return 'N/A';
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        if (h > 0) return `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m`;
+        return `${m}m`;
+    };
+
+    const formatTargetDuration = (str: string) => {
+        const mins = parseInt(str) || 0;
+        if (!mins) return 'N/A';
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        if (h > 0) return (
+            <span>
+                {String(h).padStart(2, '0')}<span className="normal-case">h</span>{String(m).padStart(2, '0')}<span className="normal-case">m</span>
+            </span>
+        );
+        return (
+            <span>
+                {m}<span className="normal-case">m</span>
+            </span>
+        );
+    };
+
     const cashTarget = React.useMemo(() => {
         const item = timeline.find(t => t.paymentType?.toLowerCase().includes('cash') && t.targetTotalTat);
-        return item ? formatDuration(`${parseInt(item.targetTotalTat) || 0} mins`) : 'N/A';
+        return item ? formatTargetDuration(`${parseInt(item.targetTotalTat) || 0} mins`) : 'N/A';
     }, [timeline]);
 
     const insuranceTarget = React.useMemo(() => {
         const item = timeline.find(t => (t.paymentType?.toLowerCase().includes('insurance') || t.paymentType?.toLowerCase().includes('tpa')) && t.targetTotalTat);
-        return item ? formatDuration(`${parseInt(item.targetTotalTat) || 0} mins`) : 'N/A';
+        return item ? formatTargetDuration(`${parseInt(item.targetTotalTat) || 0} mins`) : 'N/A';
     }, [timeline]);
 
     return (
@@ -286,22 +312,20 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 </div>
                             </th>
 
-                            {!isDemo && (
-                                <th
-                                    className="p-1 bg-slate-100 border-b border-slate-200 min-w-[100px] text-center align-middle cursor-pointer hover:bg-slate-200 transition-colors select-none"
-                                    onClick={() => handleSort('Bill Received')}
-                                >
-                                    <div className="flex items-center justify-center h-full gap-1">
-                                        <span>Bill Received</span>
-                                        {sortConfig.key === 'Bill Received' && <span className="text-[10px] text-slate-500">▼</span>}
-                                        {(() => {
-                                            const stats = getDeptStats('Bill Received');
-                                            // if (stats.pending > 0) return <span className="text-yellow-600 font-bold ml-1">-{stats.pending}</span>;
-                                            return null;
-                                        })()}
-                                    </div>
-                                </th>
-                            )}
+                            <th
+                                className="p-1 bg-slate-100 border-b border-slate-200 min-w-[100px] text-center align-middle cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                                onClick={() => handleSort('Bill Received')}
+                            >
+                                <div className="flex items-center justify-center h-full gap-1">
+                                    <span>Bill Received</span>
+                                    {sortConfig.key === 'Bill Received' && <span className="text-[10px] text-slate-500">▼</span>}
+                                    {(() => {
+                                        const stats = getDeptStats('Bill Received');
+                                        // if (stats.pending > 0) return <span className="text-yellow-600 font-bold ml-1">-{stats.pending}</span>;
+                                        return null;
+                                    })()}
+                                </div>
+                            </th>
 
                             {configuredDepartments.map((dept) => {
                                 const stats = getDeptStats(dept);
@@ -370,27 +394,25 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                             </td>
 
                             {/* Bill Received Pending */}
-                            {!isDemo && (
-                                <td
-                                    className={`p-1 text-center cursor-pointer hover:bg-slate-100 transition-colors ${pendingSortDept === 'Bill Received' ? 'bg-yellow-50' : ''}`}
-                                    onClick={() => handlePendingSort('Bill Received')}
-                                    title="Click to sort by pending items"
-                                >
-                                    {(() => {
-                                        const pendingCount = getDeptStats('Bill Received').pending;
-                                        return pendingCount > 0 ? (
-                                            <span className={clsx(
-                                                "font-mono text-xs",
-                                                pendingSortDept === 'Bill Received' ? "text-slate-900 font-bold underline decoration-yellow-500 underline-offset-4" : "text-yellow-600"
-                                            )}>
-                                                {pendingCount}
-                                            </span>
-                                        ) : (
-                                            <span className="text-slate-400 font-mono text-[10px]">-</span>
-                                        );
-                                    })()}
-                                </td>
-                            )}
+                            <td
+                                className={`p-1 text-center cursor-pointer hover:bg-slate-100 transition-colors ${pendingSortDept === 'Bill Received' ? 'bg-yellow-50' : ''}`}
+                                onClick={() => handlePendingSort('Bill Received')}
+                                title="Click to sort by pending items"
+                            >
+                                {(() => {
+                                    const pendingCount = getDeptStats('Bill Received').pending;
+                                    return pendingCount > 0 ? (
+                                        <span className={clsx(
+                                            "font-mono text-xs",
+                                            pendingSortDept === 'Bill Received' ? "text-slate-900 font-bold underline decoration-yellow-500 underline-offset-4" : "text-yellow-600"
+                                        )}>
+                                            {pendingCount}
+                                        </span>
+                                    ) : (
+                                        <span className="text-slate-400 font-mono text-[10px]">-</span>
+                                    );
+                                })()}
+                            </td>
 
                             {/* Department Pendings */}
                             {configuredDepartments.map((dept) => {
@@ -498,59 +520,57 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     </td>
 
                                     {/* Bill Received Column */}
-                                    {!isDemo && (
-                                        <td className="p-2 text-center align-top">
-                                            {(() => {
-                                                const isInitiated = !!row.firstDeptAck;
-                                                const isCompleted = !!row.firstDeptAckSuccess;
+                                    <td className="p-2 text-center align-top">
+                                        {(() => {
+                                            const isInitiated = !!row.firstDeptAck;
+                                            const isCompleted = !!row.firstDeptAckSuccess;
 
-                                                if (isInitiated && !isCompleted) {
-                                                    return (
-                                                        <div className="flex flex-col items-center">
-                                                            <span className="text-xs font-bold text-blue-600 block">
-                                                                {formatTime(row.firstDeptAck ?? null)}
-                                                            </span>
-                                                            {isPastDate ? null : (
-                                                                <>
-                                                                    {isPastDate ? null : (
-                                                                        <div className="h-6 flex items-center justify-center w-full">
-                                                                            <LiveTimer
-                                                                                startTime={row.firstDeptAck!}
-                                                                                slaDuration={15}
-                                                                                warningMin={5} // 15m SLA: 0-10 Green, 10-15 Yellow
-                                                                                isExtended={false}
-                                                                                showGif={showGif}
-                                                                            />
-                                                                        </div>
-                                                                    )}
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                }
+                                            if (isInitiated && !isCompleted) {
+                                                return (
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-xs font-bold text-blue-600 block">
+                                                            {formatTime(row.firstDeptAck ?? null)}
+                                                        </span>
+                                                        {isPastDate ? null : (
+                                                            <>
+                                                                {isPastDate ? null : (
+                                                                    <div className="h-6 flex items-center justify-center w-full">
+                                                                        <LiveTimer
+                                                                            startTime={row.firstDeptAck!}
+                                                                            slaDuration={15}
+                                                                            warningMin={5} // 15m SLA: 0-10 Green, 10-15 Yellow
+                                                                            isExtended={false}
+                                                                            showGif={showGif}
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                );
+                                            }
 
-                                                if (isCompleted) {
-                                                    return (
-                                                        <div className="flex flex-col items-center">
-                                                            <span className="text-xs text-blue-600 font-bold whitespace-nowrap block">
-                                                                {formatTime(row.firstDeptAck ?? null)}
-                                                            </span>
-                                                            <span className="text-xs text-purple-600 font-bold block">
-                                                                {formatTime(row.firstDeptAckSuccess ?? null)}
-                                                            </span>
-                                                            <span className={clsx(billStatusColor, "text-xs font-bold",
-                                                                !billStatusColor.includes('red') && billDelay !== 'Pending' && "text-slate-600"
-                                                            )}>
-                                                                {formatDelayString(billDelay)}
-                                                            </span>
-                                                        </div>
-                                                    );
-                                                }
+                                            if (isCompleted) {
+                                                return (
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-xs text-blue-600 font-bold whitespace-nowrap block">
+                                                            {formatTime(row.firstDeptAck ?? null)}
+                                                        </span>
+                                                        <span className="text-xs text-purple-600 font-bold block">
+                                                            {formatTime(row.firstDeptAckSuccess ?? null)}
+                                                        </span>
+                                                        <span className={clsx(billStatusColor, "text-xs font-bold",
+                                                            !billStatusColor.includes('red') && billDelay !== 'Pending' && "text-slate-600"
+                                                        )}>
+                                                            {formatDelayString(billDelay)}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            }
 
-                                                return <span className="text-slate-400 font-mono">-</span>;
-                                            })()}
-                                        </td>
-                                    )}
+                                            return <span className="text-slate-400 font-mono">-</span>;
+                                        })()}
+                                    </td>
 
                                     {
                                         configuredDepartments.map((dept, deptIndex) => {
@@ -659,18 +679,16 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 )}
                             </td>
                             {/* Bill Received Pending */}
-                            {!isDemo && (
-                                <td className="p-2 text-center">
-                                    {(() => {
-                                        const pendingCount = getDeptStats('Bill Received').pending;
-                                        return pendingCount > 0 ? (
-                                            <span className="text-yellow-600 font-mono text-sm">{pendingCount}</span>
-                                        ) : (
-                                            <span className="text-slate-400 font-mono">-</span>
-                                        );
-                                    })()}
-                                </td>
-                            )}
+                            <td className="p-2 text-center">
+                                {(() => {
+                                    const pendingCount = getDeptStats('Bill Received').pending;
+                                    return pendingCount > 0 ? (
+                                        <span className="text-yellow-600 font-mono text-sm">{pendingCount}</span>
+                                    ) : (
+                                        <span className="text-slate-400 font-mono">-</span>
+                                    );
+                                })()}
+                            </td>
                             {/* Department Pendings */}
                             {configuredDepartments.map((dept) => {
                                 const count = getDeptStats(dept).pending;
@@ -703,18 +721,16 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     <span className="text-slate-400 font-mono">-</span>
                                 )}
                             </td>
-                            {!isDemo && (
-                                <td className="p-2 text-center">
-                                    {(() => {
-                                        const completedCount = getDeptStats('Bill Received').completed;
-                                        return completedCount > 0 ? (
-                                            <span className="text-emerald-600 font-mono text-sm">{completedCount}</span>
-                                        ) : (
-                                            <span className="text-slate-400 font-mono">-</span>
-                                        );
-                                    })()}
-                                </td>
-                            )}
+                            <td className="p-2 text-center">
+                                {(() => {
+                                    const completedCount = getDeptStats('Bill Received').completed;
+                                    return completedCount > 0 ? (
+                                        <span className="text-emerald-600 font-mono text-sm">{completedCount}</span>
+                                    ) : (
+                                        <span className="text-slate-400 font-mono">-</span>
+                                    );
+                                })()}
+                            </td>
                             {configuredDepartments.map((dept) => {
                                 const count = getDeptStats(dept).completed;
                                 return (
@@ -744,25 +760,23 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 Footer: Label (Colspan 3 handles Name+Ward+Overall) | Bill Received | Depts...
                             */}
 
-                            {!isDemo && (
-                                <td className="p-2 text-center">
-                                    {(() => {
-                                        const totalBillDelay = mergedData.reduce((acc, row) => {
-                                            if (row.sla?.overallDelay === 'Pending') return acc;
-                                            const delayStr = calculateBillDelay(row.firstDeptAck, row.firstDeptAckSuccess);
-                                            const parsed = parseDelayMinutes(delayStr);
-                                            return acc + (parsed > 0 ? parsed : 0);
-                                        }, 0);
-                                        return totalBillDelay > 0 ? (
-                                            <span className="!text-red-600 font-mono text-sm font-bold">
-                                                {formatDelayString(`plus ${totalBillDelay} mins`)}
-                                            </span>
-                                        ) : (
-                                            <span className="text-slate-400 font-mono">-</span>
-                                        );
-                                    })()}
-                                </td>
-                            )}
+                            <td className="p-2 text-center">
+                                {(() => {
+                                    const totalBillDelay = mergedData.reduce((acc, row) => {
+                                        if (row.sla?.overallDelay === 'Pending') return acc;
+                                        const delayStr = calculateBillDelay(row.firstDeptAck, row.firstDeptAckSuccess);
+                                        const parsed = parseDelayMinutes(delayStr);
+                                        return acc + (parsed > 0 ? parsed : 0);
+                                    }, 0);
+                                    return totalBillDelay > 0 ? (
+                                        <span className="!text-red-600 font-mono text-sm font-bold">
+                                            {formatDelayString(`plus ${totalBillDelay} mins`)}
+                                        </span>
+                                    ) : (
+                                        <span className="text-slate-400 font-mono">-</span>
+                                    );
+                                })()}
+                            </td>
 
 
                             {configuredDepartments.map((dept, index) => {
@@ -807,21 +821,19 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 </div>
                             </td>
 
-                            {!isDemo && (
-                                <td className="p-1 text-center text-slate-500 font-mono text-xs font-bold">
-                                    {(() => {
-                                        const h = Math.floor(15 / 60);
-                                        const m = 15 % 60;
-                                        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                                    })()}
-                                </td>
-                            )}
+                            <td className="p-1 text-center text-slate-500 font-mono text-xs font-bold">
+                                {(() => {
+                                    const h = Math.floor(15 / 60);
+                                    const m = 15 % 60;
+                                    return h > 0 ? `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m` : `${m}m`;
+                                })()}
+                            </td>
 
                             {configuredDepartments.map((dept) => {
                                 const slaMins = workflow.departmentSlaConfig?.[dept] ?? 0;
                                 const h = Math.floor(slaMins / 60);
                                 const m = slaMins % 60;
-                                const formatted = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                                const formatted = h > 0 ? `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m` : `${m}m`;
                                 return (
                                     <td key={dept} className="p-1 text-center text-slate-500 font-mono text-xs font-bold">
                                         {slaMins > 0 ? formatted : '-'}
