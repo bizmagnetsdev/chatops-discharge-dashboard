@@ -19,9 +19,13 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
     const { timeline, sla, configuredDepartments = [] } = workflow;
     const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
-    const reportDate = workflow.reportDate ? parseISO(workflow.reportDate) : new Date();
-    const today = startOfDay(new Date());
-    const isPastDate = isBefore(startOfDay(reportDate), today);
+    const [isPastDate, setIsPastDate] = React.useState(false);
+
+    React.useEffect(() => {
+        const reportDate = workflow.reportDate ? parseISO(workflow.reportDate) : new Date();
+        const today = startOfDay(new Date());
+        setIsPastDate(isBefore(startOfDay(reportDate), today));
+    }, [workflow.reportDate]);
 
 
     const [showGif, setShowGif] = React.useState(true);
