@@ -1,9 +1,41 @@
 import Dashboard from '@/components/Dashboard';
 import { DashboardResponse } from '@/types/dashboard';
-
+import type { Metadata } from "next";
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-
+export const metadata: Metadata = {
+  metadataBase: new URL("https://dashboard.chatops.health"),
+  title: {
+    default: "Fix Bed Turnaround Delays with Real-Time Discharge Coordination",
+    template: "%s | ChatOps.health",
+  },
+  description: "See how real-time discharge coordination improves bed turnaround, reduces post-bill payment delays, and returns beds to revenue faster in mid-size hospitals.",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    type: "website",
+    siteName: "ChatOps.health",
+    url: "https://dashboard.chatops.health/",
+    title: "Fix Bed Turnaround Delays with Real-Time Discharge Coordination",
+    description: "See how real-time discharge coordination improves bed turnaround, reduces post-bill payment delays, and returns beds to revenue faster in mid-size hospitals.",
+    // Add your OG image here for WhatsApp/social previews
+    images: [],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Fix Bed Turnaround Delays with Real-Time Discharge Coordination",
+    description: "See how real-time discharge coordination improves bed turnaround, reduces post-bill payment delays, and returns beds to revenue faster in mid-size hospitals.",
+    // Add your Twitter image here
+    images: [],
+  },
+};
 async function getData(date: string, flowName: string): Promise<DashboardResponse> {
   // Use provided flowName (Required)
   const decodedFlowName = decodeURIComponent(flowName);

@@ -1,5 +1,40 @@
 import DemoDashboard from '@/components/DemoDashboard';
 import { DashboardResponse, Workflow, TimelineItem, SLAItem } from '@/types/dashboard';
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  metadataBase: new URL("https://dashboard.chatops.health/demo"),
+  title: {
+    default: "Fix Bed Turnaround Delays with Real-Time Discharge Coordination",
+    template: "%s | ChatOps.health",
+  },
+  description: "See how real-time discharge coordination improves bed turnaround, reduces post-bill payment delays, and returns beds to revenue faster in mid-size hospitals.",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    type: "website",
+    siteName: "ChatOps.health",
+    url: "https://dashboard.chatops.health/demo/",
+    title: "Fix Bed Turnaround Delays with Real-Time Discharge Coordination",
+    description: "See how real-time discharge coordination improves bed turnaround, reduces post-bill payment delays, and returns beds to revenue faster in mid-size hospitals.",
+    // Add your OG image here for WhatsApp/social previews
+    images: [],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Fix Bed Turnaround Delays with Real-Time Discharge Coordination",
+    description: "See how real-time discharge coordination improves bed turnaround, reduces post-bill payment delays, and returns beds to revenue faster in mid-size hospitals.",
+    // Add your Twitter image here
+    images: [],
+  },
+};
 
 // Reusing the fetch logic (could be refactored to shared lib)
 async function getData(date: string): Promise<DashboardResponse> {
