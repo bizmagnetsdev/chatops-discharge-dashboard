@@ -37,7 +37,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
     }, []); // Moved the dependency array here to close the useEffect correctly
 
     const [sortConfig, setSortConfig] = React.useState<{ key: string | null }>({ key: null });
-    const [pendingSortDept, setPendingSortDept] = React.useState<string | null>(null);
+    const [pendingSortDept, setPendingSortDept] = React.useState<string | null>(isDemo ? 'House Keeping' : null);
 
     const handleSort = (key: string) => {
         setSortConfig(current => {
