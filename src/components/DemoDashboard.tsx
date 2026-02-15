@@ -18,6 +18,11 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({ data }) => {
 
     const workflow = data.workflows?.[0];
     const [filterStatus, setFilterStatus] = React.useState<'all' | 'delayed' | 'ontime' | 'inprogress'>('all');
+    const [fallbackDate, setFallbackDate] = React.useState<string | null>(null);
+
+    useEffect(() => {
+        setFallbackDate(new Date().toISOString());
+    }, []);
 
     useEffect(() => {
         // Auto-refresh every 60 seconds (1 minute)
@@ -38,7 +43,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({ data }) => {
                         </span>— Reference View
                     </h1>
                     <p className="text-slate-500 text-xs uppercase tracking-widest font-medium">
-                        Performance Report • {format(parseISO(workflow?.reportDate || data.date || new Date().toISOString()), 'dd-MM-yyyy')}
+                        Performance Report • {(workflow?.reportDate || data.date || fallbackDate) ? format(parseISO(workflow?.reportDate || data.date || fallbackDate!), 'dd-MM-yyyy') : <span className="opacity-0">00-00-0000</span>}
                     </p>
                 </div>
                 <div className="mt-4 md:mt-0 flex items-center space-x-4">
