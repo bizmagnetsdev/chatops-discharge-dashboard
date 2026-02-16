@@ -118,16 +118,12 @@ export default async function Home({ searchParams }: PageProps) {
   try {
     data = await getData(date, flowName);
   } catch (error) {
-    // Fallback or error state
-    console.error(error);
-    return (
-      <div className="min-h-screen text-white flex items-center justify-center">
-        <div className="p-8 bg-black/50 rounded-lg border border-red-500/50">
-          <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Dashboard</h2>
-          <p className="text-slate-300">{(error as Error).message}</p>
-        </div>
-      </div>
-    );
+    data = {
+      date,
+      status: 'error',
+      message: (error as Error).message || 'Failed to fetch data',
+      workflows: []
+    } as DashboardResponse;
   }
 
   return (

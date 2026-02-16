@@ -3,37 +3,37 @@ import { DashboardResponse, Workflow, TimelineItem, SLAItem } from '@/types/dash
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://dashboard.chatops.health/real-time-discharge-coordination-demo"),
-  title: {
-    default: "Fix Bed Turnaround Delays with Real-Time Discharge Coordination",
-    template: "%s | ChatOps.health",
-  },
-  description: "See how real-time discharge coordination improves bed turnaround, reduces post-bill payment delays, and returns beds to revenue faster in mid-size hospitals.",
-  icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon.ico",
-    apple: "/favicon.ico",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  openGraph: {
-    type: "website",
-    siteName: "ChatOps.health",
-    url: "https://dashboard.chatops.health/real-time-discharge-coordination-demo/",
-    title: "Fix Bed Turnaround Delays with Real-Time Discharge Coordination",
+    metadataBase: new URL("https://dashboard.chatops.health/real-time-discharge-coordination-demo"),
+    title: {
+        default: "Fix Bed Turnaround Delays with Real-Time Discharge Coordination",
+        template: "%s | ChatOps.health",
+    },
     description: "See how real-time discharge coordination improves bed turnaround, reduces post-bill payment delays, and returns beds to revenue faster in mid-size hospitals.",
-    // Add your OG image here for WhatsApp/social previews
-    images: [],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Fix Bed Turnaround Delays with Real-Time Discharge Coordination",
-    description: "See how real-time discharge coordination improves bed turnaround, reduces post-bill payment delays, and returns beds to revenue faster in mid-size hospitals.",
-    // Add your Twitter image here
-    images: [],
-  },
+    icons: {
+        icon: "/favicon.ico",
+        shortcut: "/favicon.ico",
+        apple: "/favicon.ico",
+    },
+    robots: {
+        index: true,
+        follow: true,
+    },
+    openGraph: {
+        type: "website",
+        siteName: "ChatOps.health",
+        url: "https://dashboard.chatops.health/real-time-discharge-coordination-demo/",
+        title: "Fix Bed Turnaround Delays with Real-Time Discharge Coordination",
+        description: "See how real-time discharge coordination improves bed turnaround, reduces post-bill payment delays, and returns beds to revenue faster in mid-size hospitals.",
+        // Add your OG image here for WhatsApp/social previews
+        images: [],
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "Fix Bed Turnaround Delays with Real-Time Discharge Coordination",
+        description: "See how real-time discharge coordination improves bed turnaround, reduces post-bill payment delays, and returns beds to revenue faster in mid-size hospitals.",
+        // Add your Twitter image here
+        images: [],
+    },
 };
 
 // Reusing the fetch logic (could be refactored to shared lib)
@@ -51,7 +51,7 @@ async function getData(date: string): Promise<DashboardResponse> {
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-                  const res = await fetch(`${baseUrl}/dev/discharge-tat/get?workflowName=${workflowName}&date=${date}`, {
+            const res = await fetch(`${baseUrl}/dev/discharge-tat/get?workflowName=${workflowName}&date=${date}`, {
                 headers: {
                     'x-api-key': apiKey,
                     'Accept': 'application/json',
@@ -170,14 +170,12 @@ export default async function DemoPage({ searchParams }: PageProps) {
         const rawData = await getData(date);
         data = anonymizeData(rawData);
     } catch (error) {
-        return (
-            <div className="min-h-screen text-white flex items-center justify-center">
-                <div className="p-8 bg-black/50 rounded-lg border border-red-500/50">
-                    <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Demo</h2>
-                    <p className="text-slate-300">{(error as Error).message}</p>
-                </div>
-            </div>
-        );
+        data = {
+            date,
+            status: 'error',
+            message: (error as Error).message || 'Failed to fetch data',
+            workflows: []
+        } as DashboardResponse;
     }
 
     return (

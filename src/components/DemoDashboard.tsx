@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { DashboardResponse } from '@/types/dashboard';
 import DischargeTable from './DischargeTable';
+import OfflineBanner from './OfflineBanner';
 
 interface DemoDashboardProps {
     data: DashboardResponse;
@@ -27,7 +28,9 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({ data }) => {
     useEffect(() => {
         // Auto-refresh every 60 seconds (1 minute)
         const interval = setInterval(() => {
-            router.refresh();
+            if (navigator.onLine) {
+                router.refresh();
+            }
         }, 60000);
 
         return () => clearInterval(interval);
@@ -73,7 +76,18 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({ data }) => {
             </header >
 
             <main className="space-y-4">
-                {(data.status === 'no_data' || !workflow) ? (
+                {data.status === 'error' ? (
+                    <div className="w-full h-64 flex flex-col items-center justify-center bg-slate-50 rounded-xl border border-red-200">
+                        <div className="text-red-500 font-medium mb-2">Unable to connect to the server. Please check your internet connection and try again.</div>
+                        {/* <div className="text-slate-500 text-sm mb-4">{data.message}</div> */}
+                        <button
+                            onClick={() => router.refresh()}
+                            className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                ) : (data.status === 'no_data' || !workflow) ? (
                     <div className="w-full h-64 flex items-center justify-center overflow-hidden bg-slate-50 rounded-xl border border-slate-100 shadow-inner">
                         <style jsx>{`
                             @keyframes scroll-text {
@@ -95,10 +109,11 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({ data }) => {
                     <DischargeTable
                         workflow={workflow}
                         filterStatus={filterStatus}
-                        isDemo={true} // Always true for DemoDashboard
+                        isDemo={true}
                     />
                 )}
             </main>
+            <OfflineBanner />
         </div >
     );
 };

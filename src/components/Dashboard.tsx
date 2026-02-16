@@ -6,6 +6,7 @@ import { format, parseISO } from 'date-fns';
 import { DashboardResponse } from '@/types/dashboard';
 import SummaryCards from './SummaryCards';
 import DischargeTable from './DischargeTable';
+import OfflineBanner from './OfflineBanner';
 
 interface DashboardProps {
     data: DashboardResponse;
@@ -23,6 +24,38 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
         router.refresh(); // Refresh to ensure server state is cleared
         router.push('/login');
     };
+
+    // Check for "error" status (e.g. fetch failed / offline)
+    if (data.status === 'error') {
+        return (
+            <div className="min-h-screen p-8 max-w-[1920px] mx-auto flex items-center justify-center">
+                <div className="glass-panel p-10 rounded-2xl text-center max-w-lg w-full border border-red-200 shadow-xl bg-white/80">
+                    <div className="flex justify-center mb-4">
+                        <div className="p-3 bg-red-100 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 mb-2">Connection Error</h2>
+                    <p className="text-slate-500 mb-6">
+                        Unable to connect to the server. Please check your internet connection and try again.
+                    </p>
+                    <button
+                        onClick={() => router.refresh()}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors shadow-md hover:shadow-lg"
+                    >
+                        Try Again
+                    </button>
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                        {/* <p className="text-xs text-slate-400">
+                            Error Details: {data.message}
+                        </p> */}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     // Check for "no_data" status or missing workflows
     if (data.status === 'no_data' || !data.workflows || data.workflows.length === 0) {
@@ -65,7 +98,9 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
     useEffect(() => {
         // Auto-refresh every 60 seconds (1 minute)
         const interval = setInterval(() => {
-            router.refresh();
+            if (navigator.onLine) {
+                router.refresh();
+            }
         }, 60000);
 
         return () => clearInterval(interval);
@@ -125,6 +160,7 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                     isDemo={isDemo}
                 />
             </main>
+            <OfflineBanner />
         </div >
     );
 };
