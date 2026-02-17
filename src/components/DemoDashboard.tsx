@@ -78,14 +78,14 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({ data }) => {
             <main className="space-y-4">
                 {data.status === 'error' ? (
                     <div className="w-full h-64 flex flex-col items-center justify-center bg-slate-50 rounded-xl border border-red-200">
-                        <div className="text-red-500 font-medium mb-2">Unable to connect to the server. Please check your internet connection and try again.</div>
+                        <div className="text-red-500 font-medium mb-2">Unable to connect to the server. Please check your internet connection and refresh the page.</div>
                         {/* <div className="text-slate-500 text-sm mb-4">{data.message}</div> */}
-                        <button
+                        {/* <button
                             onClick={() => router.refresh()}
                             className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
                         >
                             Try Again
-                        </button>
+                        </button> */}
                     </div>
                 ) : (data.status === 'no_data' || !workflow) ? (
                     <div className="w-full h-64 flex items-center justify-center overflow-hidden bg-slate-50 rounded-xl border border-slate-100 shadow-inner">

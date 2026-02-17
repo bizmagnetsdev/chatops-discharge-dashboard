@@ -39,14 +39,14 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                     </div>
                     <h2 className="text-2xl font-black text-slate-900 mb-2">Connection Error</h2>
                     <p className="text-slate-500 mb-6">
-                        Unable to connect to the server. Please check your internet connection and try again.
+                        Unable to connect to the server. Please check your internet connection and refresh the page.
                     </p>
-                    <button
+                    {/* <button
                         onClick={() => router.refresh()}
                         className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors shadow-md hover:shadow-lg"
                     >
                         Try Again
-                    </button>
+                    </button> */}
                     <div className="mt-4 pt-4 border-t border-slate-100">
                         {/* <p className="text-xs text-slate-400">
                             Error Details: {data.message}

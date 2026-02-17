@@ -321,7 +321,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 onClick={() => handleSort('Bill Received')}
                             >
                                 <div className="flex items-center justify-center h-full gap-1">
-                                    <span>Bill Received</span>
+                                    <span>{isDemo ? 'Drug Returned' : 'Bill Received'}</span>
                                     {sortConfig.key === 'Bill Received' && <span className="text-[10px] text-slate-500">▼</span>}
                                     {(() => {
                                         const stats = getDeptStats('Bill Received');
