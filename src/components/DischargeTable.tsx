@@ -28,13 +28,21 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
     }, [workflow.reportDate]);
 
 
-    const [showGif, setShowGif] = React.useState(true);
+    const [showGif, setShowGif] = React.useState(isDemo);
+
     React.useEffect(() => {
+        if (isDemo) {
+            setShowGif(true); // Always show GIF in Demo mode
+            return;
+        }
+
+        // Toggle between GIF and Seconds every 3 seconds in Normal Mode
         const interval = setInterval(() => {
             setShowGif(prev => !prev);
-        }, 3000); // 3 seconds interval for GIF/Timer toggle
+        }, 3000);
+
         return () => clearInterval(interval);
-    }, []); // Moved the dependency array here to close the useEffect correctly
+    }, [isDemo]);
 
     const [sortConfig, setSortConfig] = React.useState<{ key: string | null }>({ key: null });
     const [pendingSortDept, setPendingSortDept] = React.useState<string | null>(isDemo ? 'House Keeping' : null);
@@ -86,6 +94,34 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
 
         return parseDelayMinutes(valStr);
     };
+
+    // Calculate Target TAT for Cash and Insurance from Timeline (Old Logic)
+    const formatTargetDuration = (str: string) => {
+        const mins = parseInt(str) || 0;
+        if (!mins) return 'N/A';
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        if (h > 0) return (
+            <span>
+                {String(h).padStart(2, '0')}<span className="normal-case">h</span>{String(m).padStart(2, '0')}<span className="normal-case">m</span>
+            </span>
+        );
+        return (
+            <span>
+                {m}<span className="normal-case">m</span>
+            </span>
+        );
+    };
+
+    const cashTarget = React.useMemo(() => {
+        const item = timeline.find(t => t.paymentType?.toLowerCase().includes('cash') && t.targetTotalTat);
+        return item ? formatTargetDuration(`${parseInt(item.targetTotalTat) || 0} mins`) : 'N/A';
+    }, [timeline]);
+
+    const insuranceTarget = React.useMemo(() => {
+        const item = timeline.find(t => (t.paymentType?.toLowerCase().includes('insurance') || t.paymentType?.toLowerCase().includes('tpa')) && t.targetTotalTat);
+        return item ? formatTargetDuration(`${parseInt(item.targetTotalTat) || 0} mins`) : 'N/A';
+    }, [timeline]);
 
     // Merge timeline and SLA by ticketId
     const rawMergedData = timeline.map(item => {
@@ -257,33 +293,6 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
         return `${m}m`;
     };
 
-    const formatTargetDuration = (str: string) => {
-        const mins = parseInt(str) || 0;
-        if (!mins) return 'N/A';
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
-        if (h > 0) return (
-            <span>
-                {String(h).padStart(2, '0')}<span className="normal-case">h</span>{String(m).padStart(2, '0')}<span className="normal-case">m</span>
-            </span>
-        );
-        return (
-            <span>
-                {m}<span className="normal-case">m</span>
-            </span>
-        );
-    };
-
-    const cashTarget = React.useMemo(() => {
-        const item = timeline.find(t => t.paymentType?.toLowerCase().includes('cash') && t.targetTotalTat);
-        return item ? formatTargetDuration(`${parseInt(item.targetTotalTat) || 0} mins`) : 'N/A';
-    }, [timeline]);
-
-    const insuranceTarget = React.useMemo(() => {
-        const item = timeline.find(t => (t.paymentType?.toLowerCase().includes('insurance') || t.paymentType?.toLowerCase().includes('tpa')) && t.targetTotalTat);
-        return item ? formatTargetDuration(`${parseInt(item.targetTotalTat) || 0} mins`) : 'N/A';
-    }, [timeline]);
-
     return (
         <div className="glass-panel rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-white/60 flex flex-col h-full max-h-[80vh]">
             {/* Target TAT Header Removed - Moved to Footer */}
@@ -291,7 +300,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
             <div ref={tableContainerRef} className="overflow-auto flex-1 relative">
                 <table className="w-full text-sm border-separate border-spacing-0">
                     <thead className="bg-slate-100 text-slate-500 font-semibold shadow-sm z-10">
-                        <tr className="sticky top-0 z-30 bg-slate-100 border-b border-slate-200 text-center text-[10px] uppercase tracking-wider h-10">
+                        <tr className="sticky top-0 z-30 bg-slate-100 border-b border-slate-200 text-center text-[10px] uppercase tracking-wider h-20">
 
                             <th className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[200px] text-center">
                                 <div className="flex flex-col items-center">
@@ -335,7 +344,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 const stats = getDeptStats(dept);
                                 const isNurse = dept.toLowerCase() === 'nurse';
                                 const isInsurance = dept.toUpperCase() === 'INSURANCE';
-                                const headerText = isNurse ? 'ROOM STATUS(NURSE)' : (isInsurance ? 'INSURANCE/TPA' : (isDemo && dept === 'Billing' ? 'Billing + Summary' : dept));
+                                const headerText = isNurse ? (isDemo ? 'Room Status' : 'Room Status') : (isInsurance ? (isDemo ? 'INSURANCE' : 'INSURANCE/TPA') : (isDemo && dept === 'Billing' ? 'Billing + Summary' : dept));
                                 return (
                                     <th key={dept}
                                         className={clsx(
@@ -349,7 +358,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                             {isNurse ? (
                                                 <div className="relative group cursor-default flex items-center justify-center w-full px-1">
                                                     <span className="whitespace-normal break-words leading-tight">
-                                                        ROOM STATUS <span className="text-[10px] text-slate-500 font-normal">(NURSE)</span>
+                                                        Room Status
                                                     </span>
                                                     {/* {stats.pending > 0 && <span className="text-yellow-600 font-bold ml-1 whitespace-nowrap">-{stats.pending}</span>} */}
 
@@ -372,10 +381,10 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                         </tr>
 
                         {/* Pending Count Row - Moved to Header */}
-                        <tr className="bg-slate-50 font-bold text-slate-900 border-b border-slate-200 sticky top-10 z-20 shadow-sm h-7">
+                        <tr className="bg-slate-50 font-bold text-slate-900 border-b border-slate-200 sticky top-20 z-20 shadow-sm h-7">
                             <td
                                 colSpan={2}
-                                className="p-1 text-center text-slate-500 uppercase tracking-widest text-[10px]"
+                                className="p-1 pl-2 text-center text-slate-500 uppercase tracking-widest text-[10px]"
                             >
                                 Pending Count
                             </td>
@@ -442,6 +451,41 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 );
                             })}
                         </tr>
+
+                        {/* Target TAT Row - Demo Only */}
+                        {isDemo && (
+                            <tr className="bg-slate-50 border-b border-slate-200 sticky top-[108px] z-20 shadow-sm h-7">
+                                <td colSpan={3} className="p-1 pl-4 text-left align-middle font-bold text-slate-500 text-xs">
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-slate-900 font-bold uppercase mr-1">TARGET TAT:</span>
+                                        <div className="flex items-center gap-2">
+                                            <div className="whitespace-nowrap"><span className="text-slate-900 font-bold uppercase mr-1">CASH:</span> <span className="font-bold text-blue-600">{cashTarget}</span></div>
+                                            <div className="whitespace-nowrap"><span className="text-slate-900 font-bold uppercase mr-1">{isDemo ? 'INSURANCE:' : 'INSURANCE/TPA:'}</span> <span className="font-bold text-purple-600">{insuranceTarget}</span></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="p-1 text-center align-middle font-bold text-slate-900 text-xs">15m</td>
+                                {configuredDepartments.map((dept) => {
+                                    const slaMins = workflow.departmentSlaConfig?.[dept] || 0;
+                                    // Handle "-" for Cash Counter if SLA is 0
+                                    if (slaMins === 0) return (
+                                        <td key={`${dept}-target`} className="p-1 text-center align-middle font-bold text-slate-900 text-xs">
+                                            -
+                                        </td>
+                                    );
+
+                                    const h = Math.floor(slaMins / 60);
+                                    const m = slaMins % 60;
+                                    const formatted = h > 0 ? `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m` : `${m}m`;
+
+                                    return (
+                                        <td key={`${dept}-target`} className="p-1 text-center align-middle font-bold text-slate-900 text-xs">
+                                            {formatted}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        )}
                     </thead>
                     <tbody>
                         {mergedData.map((row) => {
@@ -810,41 +854,43 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 );
                             })}
                         </tr>
-                        <tr className="bg-slate-100 font-bold text-slate-900 border-t border-slate-200 sticky bottom-0 z-20 shadow-inner">
-                            <td colSpan={3} className="p-1 text-left text-xs font-bold text-slate-500 uppercase tracking-wider pl-4">
-                                <div className="flex items-center gap-6">
-                                    <span>Target TAT:</span>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-slate-900">Cash:</span>
-                                        <span className="font-mono font-bold text-blue-600">{cashTarget}</span>
+                        {!isDemo && (
+                            <tr className="bg-slate-100 font-bold text-slate-900 border-t border-slate-200 sticky bottom-0 z-20 shadow-inner">
+                                <td colSpan={3} className="p-1 text-left text-xs font-bold text-slate-500 uppercase tracking-wider pl-4">
+                                    <div className="flex items-center gap-6">
+                                        <span>Target TAT:</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-slate-900">Cash:</span>
+                                            <span className="font-mono font-bold text-blue-600">{cashTarget}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-slate-900">Insurance/TPA:</span>
+                                            <span className="font-mono font-bold text-purple-600">{insuranceTarget}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-slate-900">Insurance/TPA:</span>
-                                        <span className="font-mono font-bold text-purple-600">{insuranceTarget}</span>
-                                    </div>
-                                </div>
-                            </td>
+                                </td>
 
-                            <td className="p-1 text-center text-slate-500 font-mono text-xs font-bold">
-                                {(() => {
-                                    const h = Math.floor(15 / 60);
-                                    const m = 15 % 60;
-                                    return h > 0 ? `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m` : `${m}m`;
-                                })()}
-                            </td>
+                                <td className="p-1 text-center text-slate-500 font-mono text-xs font-bold">
+                                    {(() => {
+                                        const h = Math.floor(15 / 60);
+                                        const m = 15 % 60;
+                                        return h > 0 ? `${String(h).padEnd(2, '0')}h${String(m).padEnd(2, '0')}m` : `${m}m`;
+                                    })()}
+                                </td>
 
-                            {configuredDepartments.map((dept) => {
-                                const slaMins = workflow.departmentSlaConfig?.[dept] ?? 0;
-                                const h = Math.floor(slaMins / 60);
-                                const m = slaMins % 60;
-                                const formatted = h > 0 ? `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m` : `${m}m`;
-                                return (
-                                    <td key={dept} className="p-1 text-center text-slate-500 font-mono text-xs font-bold">
-                                        {slaMins > 0 ? formatted : '-'}
-                                    </td>
-                                );
-                            })}
-                        </tr>
+                                {configuredDepartments.map((dept) => {
+                                    const slaMins = workflow.departmentSlaConfig?.[dept] ?? 0;
+                                    const h = Math.floor(slaMins / 60);
+                                    const m = slaMins % 60;
+                                    const formatted = h > 0 ? `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m` : `${m}m`;
+                                    return (
+                                        <td key={dept} className="p-1 text-center text-slate-500 font-mono text-xs font-bold">
+                                            {slaMins > 0 ? formatted : '-'}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div >
