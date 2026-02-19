@@ -335,7 +335,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 const stats = getDeptStats(dept);
                                 const isNurse = dept.toLowerCase() === 'nurse';
                                 const isInsurance = dept.toUpperCase() === 'INSURANCE';
-                                const headerText = isNurse ? 'ROOM STATUS(NURSE)' : (isInsurance ? 'INSURANCE/TPA' : dept);
+                                const headerText = isNurse ? 'ROOM STATUS(NURSE)' : (isInsurance ? 'INSURANCE/TPA' : (isDemo && dept === 'Billing' ? 'Billing + Summary' : dept));
                                 return (
                                     <th key={dept}
                                         className={clsx(
