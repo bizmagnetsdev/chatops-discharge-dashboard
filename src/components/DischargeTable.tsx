@@ -300,7 +300,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
             <div ref={tableContainerRef} className="overflow-auto flex-1 relative">
                 <table className="w-full text-sm border-separate border-spacing-0">
                     <thead className="bg-slate-100 text-slate-500 font-semibold shadow-sm z-10">
-                        <tr className="sticky top-0 z-30 bg-slate-100 border-b border-slate-200 text-center text-[10px] uppercase tracking-wider h-20">
+                        <tr className="sticky top-0 z-30 bg-slate-100 border-b border-slate-200 text-center text-[10px] uppercase tracking-wider h-12">
 
                             <th className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[200px] text-center">
                                 <div className="flex flex-col items-center">
@@ -330,7 +330,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 onClick={() => handleSort('Bill Received')}
                             >
                                 <div className="flex items-center justify-center h-full gap-1">
-                                    <span>{isDemo ? 'Drug Returned' : 'Bill Received'}</span>
+                                    <span>{isDemo ? 'Drugs Returned' : 'Bill Received'}</span>
                                     {sortConfig.key === 'Bill Received' && <span className="text-[10px] text-slate-500">▼</span>}
                                     {(() => {
                                         const stats = getDeptStats('Bill Received');
@@ -381,7 +381,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                         </tr>
 
                         {/* Pending Count Row - Moved to Header */}
-                        <tr className="bg-slate-50 font-bold text-slate-900 border-b border-slate-200 sticky top-20 z-20 shadow-sm h-7">
+                        <tr className="bg-slate-50 font-bold text-slate-900 border-b border-slate-200 sticky top-12 z-20 shadow-sm h-7">
                             <td
                                 colSpan={2}
                                 className="p-1 pl-2 text-center text-slate-500 uppercase tracking-widest text-[10px]"
@@ -454,7 +454,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
 
                         {/* Target TAT Row - Demo Only */}
                         {isDemo && (
-                            <tr className="bg-slate-50 border-b border-slate-200 sticky top-[108px] z-20 shadow-sm h-7">
+                            <tr className="bg-slate-50 border-b border-slate-200 sticky top-[76px] z-20 shadow-sm h-5">
                                 <td colSpan={3} className="p-1 pl-4 text-left align-middle font-bold text-slate-500 text-xs">
                                     <div className="flex items-center gap-4">
                                         <span className="text-slate-900 font-bold uppercase mr-1">TARGET TAT:</span>
