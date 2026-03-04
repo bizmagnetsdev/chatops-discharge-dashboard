@@ -342,7 +342,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
 
                             {configuredDepartments.map((dept) => {
                                 const stats = getDeptStats(dept);
-                                const isNurse = dept.toLowerCase() === 'nurse';
+                                const isNurse = dept.toLowerCase() === 'nurse' || dept.toLowerCase() === 'room status';
                                 const isInsurance = dept.toUpperCase() === 'INSURANCE';
                                 const headerText = isNurse ? (isDemo ? 'Room Status' : 'Room Status') : (isInsurance ? (isDemo ? 'INSURANCE' : 'INSURANCE/TPA') : (isDemo && dept === 'Billing' ? 'Billing + Summary' : dept));
                                 return (
@@ -800,7 +800,20 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 Total Time
                             </td>
                             <td className="p-2 text-center">
-                                <span className="text-slate-400 font-mono">-</span>
+                                {(() => {
+                                    const totalOverallDelay = mergedData.reduce((acc, row) => {
+                                        if (row.sla?.overallDelay === 'Pending' || !row.sla?.overallDelay) return acc;
+                                        const parsed = parseDelayMinutes(row.sla.overallDelay);
+                                        return acc + (parsed > 0 ? parsed : 0);
+                                    }, 0);
+                                    return totalOverallDelay > 0 ? (
+                                        <span className="!text-red-600 font-mono text-sm font-bold">
+                                            {formatDelayString(`${totalOverallDelay} mins`)}
+                                        </span>
+                                    ) : (
+                                        <span className="text-slate-400 font-mono">-</span>
+                                    );
+                                })()}
                             </td>
                             {/* Skipping Overall Delay Sum column since it was part of the merged column logic in footer? 
                                 Actually, the footer structure needs to match the body columns.
@@ -811,14 +824,14 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                             <td className="p-2 text-center">
                                 {(() => {
                                     const totalBillDelay = mergedData.reduce((acc, row) => {
-                                        if (row.sla?.overallDelay === 'Pending') return acc;
                                         const delayStr = calculateBillDelay(row.firstDeptAck, row.firstDeptAckSuccess);
+                                        if (delayStr === 'Pending' || delayStr === 'NA') return acc;
                                         const parsed = parseDelayMinutes(delayStr);
                                         return acc + (parsed > 0 ? parsed : 0);
                                     }, 0);
                                     return totalBillDelay > 0 ? (
                                         <span className="!text-red-600 font-mono text-sm font-bold">
-                                            {formatDelayString(`plus ${totalBillDelay} mins`)}
+                                            {formatDelayString(`${totalBillDelay} mins`)}
                                         </span>
                                     ) : (
                                         <span className="text-slate-400 font-mono">-</span>
@@ -832,11 +845,12 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 const hasSla = slaMins > 0;
                                 if (!hasSla) return <td key={dept} className="p-2 text-center"><span className="text-slate-600 font-mono">-</span></td>;
 
-                                const totalDeptMinutes = workflow.sla.reduce((acc, curr) => {
-                                    if (curr.overallDelay === 'Pending') return acc;
+                                const totalDeptMinutes = mergedData.reduce((acc, row) => {
                                     let delayString = '0';
-                                    if (index === 0) delayString = curr.firstDeptDelay || '0';
-                                    else delayString = curr.departmentDelays?.[dept] || '0';
+                                    if (index === 0) delayString = row.sla?.firstDeptDelay || '0';
+                                    else delayString = row.sla?.departmentDelays?.[dept] || '0';
+
+                                    if (delayString === 'Pending' || delayString === 'NA' || !delayString) return acc;
                                     const parsed = parseDelayMinutes(delayString);
                                     return acc + (parsed > 0 ? parsed : 0);
                                 }, 0);
