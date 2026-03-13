@@ -113,7 +113,7 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                     <h1 className="text-3xl font-black tracking-tight text-slate-900 mb-1"> {/* Slightly smaller font */}
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-cyan-600">
                             {isDemo ? 'Kxxxxxx Hxxxxxl' : (flowName || 'Kongunad Hospital')}
-                        </span> Discharge Process
+                        </span> Process
                     </h1>
                     <p className="text-slate-500 text-xs uppercase tracking-widest font-medium">
                         Performance Report • {format(parseISO(workflow.reportDate || data.date || new Date().toISOString()), 'dd-MM-yyyy')}
