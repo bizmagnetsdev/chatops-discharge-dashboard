@@ -66,8 +66,8 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
         let valStr = '';
         if (key === 'Overall Time') {
             valStr = row.sla?.overallDelay || '';
-        } else if (key === 'Bill Received') {
-            // Better to parse row data directly for Bill Received Delay or rely on row.sla?.firstDeptDelay if reliable.
+        } else if (key === 'Drugs Returned') {
+            // Better to parse row data directly for Drugs Returned Delay or rely on row.sla?.firstDeptDelay if reliable.
             // Actually, based on logic below:
             const isInitiated = !!row.firstDeptAck;
             const isCompleted = !!row.firstDeptAckSuccess;
@@ -183,7 +183,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
             data.sort((a, b) => {
                 const getIsPending = (row: any, dept: string) => {
                     if (dept === 'Overall Time') return row.sla?.overallDelay === 'Pending';
-                    if (dept === 'Bill Received') return !!row.firstDeptAck && !row.firstDeptAckSuccess;
+                    if (dept === 'Drugs Returned') return !!row.firstDeptAck && !row.firstDeptAckSuccess;
 
                     const deptIndex = configuredDepartments.indexOf(dept);
                     const isInitiated = deptIndex === 0 ? !!row.firstDeptAck : !!row.departmentInitiatedTimes?.[dept];
@@ -242,7 +242,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
 
     // Helper to calculate stats
     const getDeptStats = (dept: string) => {
-        if (dept === 'Bill Received') {
+        if (dept === 'Drugs Returned') {
             const pendingBills = mergedData.filter(r => r.firstDeptAck && !r.firstDeptAckSuccess).length;
             const completedBills = mergedData.filter(r => r.firstDeptAckSuccess).length;
             return { pending: pendingBills, completed: completedBills };
@@ -327,14 +327,13 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
 
                             <th
                                 className="p-1 bg-slate-100 border-b border-slate-200 min-w-[100px] text-center align-middle cursor-pointer hover:bg-slate-200 transition-colors select-none"
-                                onClick={() => handleSort('Bill Received')}
+                                onClick={() => handleSort('Drugs Returned')}
                             >
                                 <div className="flex items-center justify-center h-full gap-1">
-                                    {/* <span>{isDemo ? 'Drugs Returned' : 'Bill Received'}</span> */}
-                                    <span>{isDemo ? 'Drugs Returned' : 'Drugs Returned'}</span>
-                                    {sortConfig.key === 'Bill Received' && <span className="text-[10px] text-slate-500">▼</span>}
+                                    <span>Drugs Returned</span>
+                                    {sortConfig.key === 'Drugs Returned' && <span className="text-[10px] text-slate-500">▼</span>}
                                     {(() => {
-                                        const stats = getDeptStats('Bill Received');
+                                        const stats = getDeptStats('Drugs Returned');
                                         // if (stats.pending > 0) return <span className="text-yellow-600 font-bold ml-1">-{stats.pending}</span>;
                                         return null;
                                     })()}
@@ -407,18 +406,18 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 )}
                             </td>
 
-                            {/* Bill Received Pending */}
+                            {/* Drugs Returned Pending */}
                             <td
-                                className={`p-1 text-center cursor-pointer hover:bg-slate-100 transition-colors ${pendingSortDept === 'Bill Received' ? 'bg-yellow-50' : ''}`}
-                                onClick={() => handlePendingSort('Bill Received')}
+                                className={`p-1 text-center cursor-pointer hover:bg-slate-100 transition-colors ${pendingSortDept === 'Drugs Returned' ? 'bg-yellow-50' : ''}`}
+                                onClick={() => handlePendingSort('Drugs Returned')}
                                 title="Click to sort by pending items"
                             >
                                 {(() => {
-                                    const pendingCount = getDeptStats('Bill Received').pending;
+                                    const pendingCount = getDeptStats('Drugs Returned').pending;
                                     return pendingCount > 0 ? (
                                         <span className={clsx(
                                             "font-mono text-xs",
-                                            pendingSortDept === 'Bill Received' ? "text-slate-900 font-bold underline decoration-yellow-500 underline-offset-4" : "text-yellow-600"
+                                            pendingSortDept === 'Drugs Returned' ? "text-slate-900 font-bold underline decoration-yellow-500 underline-offset-4" : "text-yellow-600"
                                         )}>
                                             {pendingCount}
                                         </span>
@@ -568,36 +567,36 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                         )}
                                     </td>
 
-                                    {/* Bill Received Column */}
+                                    {/* Drugs Returned Column */}
                                     <td className="p-2 text-center align-top">
                                         {(() => {
                                             const isInitiated = !!row.firstDeptAck;
                                             const isCompleted = !!row.firstDeptAckSuccess;
 
-                                            if (isInitiated && !isCompleted) {
-                                                return (
-                                                    <div className="flex flex-col items-center">
-                                                        <span className="text-xs font-bold text-blue-600 block">
-                                                            {formatTime(row.firstDeptAck ?? null)}
-                                                        </span>
-                                                        {isPastDate ? null : (
-                                                            <>
-                                                                {isPastDate ? null : (
-                                                                    <div className="h-6 flex items-center justify-center w-full">
-                                                                        <LiveTimer
-                                                                            startTime={row.firstDeptAck!}
-                                                                            slaDuration={15}
-                                                                            warningMin={5} // 15m SLA: 0-10 Green, 10-15 Yellow
-                                                                            isExtended={false}
-                                                                            showGif={showGif}
-                                                                        />
-                                                                    </div>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                );
-                                            }
+                                            // if (isInitiated && !isCompleted) {
+                                            //     return (
+                                            //         <div className="flex flex-col items-center">
+                                            //             <span className="text-xs font-bold text-blue-600 block">
+                                            //                 {formatTime(row.firstDeptAck ?? null)}
+                                            //             </span>
+                                            //             {isPastDate ? null : (
+                                            //                 <>
+                                            //                     {isPastDate ? null : (
+                                            //                         <div className="h-6 flex items-center justify-center w-full">
+                                            //                             <LiveTimer
+                                            //                                 startTime={row.firstDeptAck!}
+                                            //                                 slaDuration={15}
+                                            //                                 warningMin={5} // 15m SLA: 0-10 Green, 10-15 Yellow
+                                            //                                 isExtended={false}
+                                            //                                 showGif={showGif}
+                                            //                             />
+                                            //                         </div>
+                                            //                     )}
+                                            //                 </>
+                                            //             )}
+                                            //         </div>
+                                            //     );
+                                            // }
 
                                             if (isCompleted) {
                                                 return (
@@ -727,10 +726,10 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     <span className="text-slate-400 font-mono">-</span>
                                 )}
                             </td>
-                            {/* Bill Received Pending */}
+                            {/* Drugs Returned Pending */}
                             <td className="p-2 text-center">
                                 {(() => {
-                                    const pendingCount = getDeptStats('Bill Received').pending;
+                                    const pendingCount = getDeptStats('Drugs Returned').pending;
                                     return pendingCount > 0 ? (
                                         <span className="text-yellow-600 font-mono text-sm">{pendingCount}</span>
                                     ) : (
@@ -772,7 +771,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                             </td>
                             <td className="p-2 text-center">
                                 {(() => {
-                                    const completedCount = getDeptStats('Bill Received').completed;
+                                    const completedCount = getDeptStats('Drugs Returned').completed;
                                     return completedCount > 0 ? (
                                         <span className="text-emerald-600 font-mono text-sm">{completedCount}</span>
                                     ) : (
