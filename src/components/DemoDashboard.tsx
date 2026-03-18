@@ -77,8 +77,8 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({ data }) => {
 
             <main className="space-y-4">
                 {data.status === 'error' ? (
-                    <div className="w-full h-64 flex flex-col items-center justify-center bg-slate-50 rounded-xl border border-red-200">
-                        <div className="text-red-500 font-medium mb-2">Unable to connect to the server. Please check your internet connection and refresh the page.</div>
+                    <div className="w-full h-64 flex flex-col items-center justify-center bg-emerald-50/30 rounded-xl border border-emerald-200">
+                        <div className="text-emerald-600 font-medium mb-2">Please check your internet connection and refresh the page.</div>
                         {/* <div className="text-slate-500 text-sm mb-4">{data.message}</div> */}
                         {/* <button
                             onClick={() => router.refresh()}

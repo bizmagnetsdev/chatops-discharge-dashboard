@@ -29,17 +29,17 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
     if (data.status === 'error') {
         return (
             <div className="min-h-screen p-8 max-w-[1920px] mx-auto flex items-center justify-center">
-                <div className="glass-panel p-10 rounded-2xl text-center max-w-lg w-full border border-red-200 shadow-xl bg-white/80">
+                <div className="glass-panel p-10 rounded-2xl text-center max-w-lg w-full border border-emerald-200 shadow-xl bg-white/80">
                     <div className="flex justify-center mb-4">
-                        <div className="p-3 bg-red-100 rounded-full">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <div className="p-3 bg-emerald-100 rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
                     </div>
-                    <h2 className="text-2xl font-black text-slate-900 mb-2">Connection Error</h2>
+                    <h2 className="text-2xl font-black text-slate-900 mb-2">Seems you're offline</h2>
                     <p className="text-slate-500 mb-6">
-                        Unable to connect to the server. Please check your internet connection and refresh the page.
+                        Please check your internet connection and refresh the page.
                     </p>
                     {/* <button
                         onClick={() => router.refresh()}
