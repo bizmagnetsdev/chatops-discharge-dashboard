@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Workflow } from '@/types/dashboard';
-import { formatTime, getStatusColor, parseDelayMinutes, calculateCompletionTime, formatDuration, formatDelayString, calculateBillDelay } from '@/utils/dateUtils';
+import { formatTime, getStatusColor, parseDelayMinutes, calculateCompletionTime, formatDuration, formatDelayString, calculateBillDelay, formatDate } from '@/utils/dateUtils';
 import clsx from 'clsx';
 import LiveTimer from './LiveTimer';
 import { isBefore, startOfDay, parseISO } from 'date-fns';
@@ -13,18 +13,26 @@ interface DischargeTableProps {
     workflow: Workflow;
     filterStatus?: 'all' | 'delayed' | 'ontime' | 'inprogress';
     isDemo?: boolean;
+    hideTimer?: boolean;
+    showInitiatedDate?: boolean;
 }
 
-const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus = 'all', isDemo = false }) => {
+const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus = 'all', isDemo = false, hideTimer = false, showInitiatedDate = false }) => {
     const { timeline, sla, configuredDepartments = [] } = workflow;
     const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
     const [isPastDate, setIsPastDate] = React.useState(false);
 
     React.useEffect(() => {
-        const reportDate = workflow.reportDate ? parseISO(workflow.reportDate) : new Date();
-        const today = startOfDay(new Date());
-        setIsPastDate(isBefore(startOfDay(reportDate), today));
+        try {
+            const reportDate = workflow.reportDate ? parseISO(workflow.reportDate) : new Date();
+            const today = startOfDay(new Date());
+            setIsPastDate(isBefore(startOfDay(reportDate), today));
+        } catch (e) {
+            // If it's a range string (like "2026-01-27 to 2026-03-18"), 
+            // it's definitely a past date (or includes past dates), so we should treat it as one to hide timers.
+            setIsPastDate(true);
+        }
     }, [workflow.reportDate]);
 
 
@@ -128,20 +136,6 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
         const slaItem = sla.find(s => s.ticketId === item.ticketId);
         return { ...item, sla: slaItem };
     });
-
-    // ... Sort Logic (omitted for brevity, assume unchanged if not in range) ...
-    // Wait, replace_file_content needs exact context. I should just target specific blocks or replace the whole component structure if small enough.
-    // The previous view showed lines 100-250.
-    // Let's do multiple replacements.
-
-    // 1. Props update
-
-    // 2. Scroll Logic Disable
-    /* 
-    React.useEffect(() => {
-       // ... commented out ...
-    }, [filterStatus ...]);
-    */
 
     // Let's use `multi_replace_file_content` to be surgical.
 
@@ -314,6 +308,13 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     Ward & Bed
                                 </div>
                             </th>
+                            {showInitiatedDate && (
+                                <th className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[100px] text-center align-middle">
+                                    <div className="flex items-center justify-center h-full">
+                                        Initiated Date
+                                    </div>
+                                </th>
+                            )}
                             <th
                                 className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[140px] text-center align-middle cursor-pointer hover:bg-slate-200 transition-colors select-none"
                                 onClick={() => handleSort('Overall Time')}
@@ -383,7 +384,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                         {/* Pending Count Row - Moved to Header */}
                         <tr className="bg-slate-50 font-bold text-slate-900 border-b border-slate-200 sticky top-12 z-20 shadow-sm h-7">
                             <td
-                                colSpan={2}
+                                colSpan={showInitiatedDate ? 3 : 2}
                                 className="p-1 pl-2 text-center text-slate-500 uppercase tracking-widest text-[10px]"
                             >
                                 Pending Count
@@ -514,6 +515,11 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     <td className="p-2 text-slate-600 font-medium text-center">
                                         {row.wardBed}
                                     </td>
+                                    {showInitiatedDate && (
+                                        <td className="p-2 text-slate-600 font-medium text-center">
+                                            {formatDate(row.dischargeStart)}
+                                        </td>
+                                    )}
 
                                     {/* Merged Overall Time Taken & Delay */}
                                     <td className="p-2 font-mono align-top text-center">
@@ -522,7 +528,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                                 <span className="text-xs text-blue-600 font-bold whitespace-nowrap block mt-1">
                                                     {formatTime(row.dischargeStart)}
                                                 </span>
-                                                {isPastDate ? (
+                                                {isPastDate || hideTimer ? (
                                                     null
                                                 ) : (
                                                     <div className="h-6 flex items-center justify-center w-full">
@@ -656,7 +662,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                                                 <span className="text-xs font-bold text-blue-600 block">
                                                                     {formatTime(startTime)}
                                                                 </span>
-                                                                {isPastDate ? (
+                                                                {isPastDate || hideTimer ? (
                                                                     null
                                                                 ) : (
                                                                     <div className="h-6 flex items-center justify-center w-full">
@@ -713,7 +719,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                         {/* Footer Rows - Keeping similar logic but with adjusted colSpan */}
                         <tr className="bg-slate-50 font-bold text-slate-900 border-t-2 border-slate-200">
                             <td
-                                colSpan={2}
+                                colSpan={showInitiatedDate ? 3 : 2}
                                 className="p-2 text-center text-slate-500 uppercase tracking-widest text-sm"
                             >
                                 Pending Count
@@ -756,7 +762,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
 
                         <tr className="bg-slate-50 font-bold text-slate-900 border-t border-slate-200">
                             <td
-                                colSpan={2}
+                                colSpan={showInitiatedDate ? 3 : 2}
                                 className="p-2 text-center text-slate-500 uppercase tracking-widest text-sm"
                             >
                                 Completed Count
@@ -796,7 +802,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                         </tr>
 
                         <tr className="bg-slate-100 font-bold text-slate-900 border-t border-slate-200">
-                            <td colSpan={2} className="p-2 text-center text-slate-500 uppercase tracking-widest text-sm">
+                            <td colSpan={showInitiatedDate ? 3 : 2} className="p-2 text-center text-slate-500 uppercase tracking-widest text-sm">
                                 Total Time
                             </td>
                             <td className="p-2 text-center">
@@ -868,9 +874,9 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                 );
                             })}
                         </tr>
-                        {!isDemo && (
+                        {!isDemo && !showInitiatedDate && (
                             <tr className="bg-slate-100 font-bold text-slate-900 border-t border-slate-200 sticky bottom-0 z-20 shadow-inner">
-                                <td colSpan={3} className="p-1 text-left text-xs font-bold text-slate-500 uppercase tracking-wider pl-4">
+                                <td colSpan={showInitiatedDate ? 4 : 3} className="p-1 text-left text-xs font-bold text-slate-500 uppercase tracking-wider pl-4">
                                     <div className="flex items-center gap-6">
                                         <span>Target TAT:</span>
                                         <div className="flex items-center gap-2">

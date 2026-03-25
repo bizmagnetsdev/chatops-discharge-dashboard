@@ -119,7 +119,7 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                         Performance Report • {format(parseISO(workflow.reportDate || data.date || new Date().toISOString()), 'dd-MM-yyyy')}
                     </p>
                 </div>
-                <div className="mt-4 md:mt-0 flex items-center space-x-4">
+                <div className="mt-4 md:mt-0 flex flex-wrap items-center gap-4">
                     {/* Date Picker */}
                     <input
                         type="date"
@@ -137,6 +137,13 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                         <span className="text-xs text-slate-500 mr-2">LIVE MONITORING</span>
                         <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                     </div>
+
+                    <button
+                        onClick={() => router.push('/discharge-tat-range')}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg text-sm transition-all shadow-sm active:scale-95 whitespace-nowrap border border-emerald-600"
+                    >
+                        Reports
+                    </button>
 
                     <button
                         onClick={handleLogout}

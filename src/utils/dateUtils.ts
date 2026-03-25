@@ -1,5 +1,14 @@
 import { format, differenceInMinutes, parseISO, addMinutes } from 'date-fns';
 
+export const formatDate = (dateString: string | null): string => {
+    if (!dateString) return '-';
+    try {
+        return format(parseISO(dateString), 'dd-MM-yyyy');
+    } catch {
+        return dateString;
+    }
+};
+
 export const formatTime = (dateString: string | null): string => {
     if (!dateString) return 'Pending';
     try {
