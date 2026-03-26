@@ -140,9 +140,9 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
 
                     <button
                         onClick={() => router.push('/discharge-tat-range')}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg text-sm transition-all shadow-sm active:scale-95 whitespace-nowrap border border-emerald-600"
+                        className="bg-white/50 hover:bg-slate-100 text-slate-800 font-bold px-5 py-2 rounded-lg text-sm transition-all shadow-sm active:scale-95 whitespace-nowrap border border-slate-200"
                     >
-                        Reports
+                        Custom Report
                     </button>
 
                     <button

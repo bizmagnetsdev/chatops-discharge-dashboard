@@ -171,6 +171,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({ initialFromDate, init
                                         onSelect={setCalendarRange}
                                         numberOfMonths={2}
                                         pagedNavigation
+                                        max={60}
                                         className="p-0 m-0"
                                     />
                                 </div>
