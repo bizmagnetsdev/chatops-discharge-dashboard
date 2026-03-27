@@ -16,6 +16,24 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDemo = false, flowName }) => {
     const router = useRouter();
     const pathname = usePathname();
+    const [selectedDate, setSelectedDate] = React.useState(data.date || '');
+    const [filterStatus, setFilterStatus] = React.useState<'all' | 'delayed' | 'ontime' | 'inprogress'>('all');
+    const [isPending, startTransition] = React.useTransition();
+
+    useEffect(() => {
+        setSelectedDate(data.date || '');
+    }, [data.date]);
+
+    useEffect(() => {
+        // Auto-refresh every 60 seconds (1 minute)
+        const interval = setInterval(() => {
+            if (navigator.onLine) {
+                router.refresh();
+            }
+        }, 60000);
+
+        return () => clearInterval(interval);
+    }, [router]);
 
     const handleLogout = () => {
         // Clear cookies
@@ -24,6 +42,23 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
         router.refresh(); // Refresh to ensure server state is cleared
         router.push('/login');
     };
+
+    if (isPending) {
+        return (
+            <div className="min-h-screen p-8 max-w-[1920px] mx-auto flex items-center justify-center">
+                <div className="glass-panel p-10 rounded-2xl text-center max-w-lg w-full border border-slate-200 shadow-xl bg-white/80">
+                    <div className="flex justify-center mb-6">
+                        <div className="relative w-16 h-16">
+                            <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
+                            <div className="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"></div>
+                        </div>
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 mb-2">Loading...</h2>
+                    <p className="text-slate-500">Please wait</p>
+                </div>
+            </div>
+        );
+    }
 
     // Check for "error" status (e.g. fetch failed / offline)
     if (data.status === 'error') {
@@ -69,17 +104,26 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                     </p>
                     <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 inline-block w-full">
                         <label className="block text-xs text-slate-500 mb-1 text-left font-bold uppercase tracking-wider">Select Date</label>
-                        <input
-                            type="date"
-                            value={data.date || ''}
-                            onChange={(e) => {
-                                const newDate = e.target.value;
-                                if (newDate) {
-                                    router.push(`${pathname}?date=${newDate}`);
-                                }
-                            }}
-                            className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-2.5 w-full shadow-sm mb-4"
-                        />
+                        <div className="flex gap-2 mb-4">
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-2.5 w-full shadow-sm"
+                            />
+                            <button
+                                onClick={() => {
+                                    if (selectedDate) {
+                                        startTransition(() => {
+                                            router.push(`${pathname}?date=${selectedDate}`);
+                                        });
+                                    }
+                                }}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-lg transition-colors text-sm shadow-sm"
+                            >
+                                Submit
+                            </button>
+                        </div>
                         <button
                             onClick={handleLogout}
                             className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-lg transition-colors text-sm"
@@ -93,18 +137,6 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
     }
 
     const workflow = data.workflows[0];
-    const [filterStatus, setFilterStatus] = React.useState<'all' | 'delayed' | 'ontime' | 'inprogress'>('all');
-
-    useEffect(() => {
-        // Auto-refresh every 60 seconds (1 minute)
-        const interval = setInterval(() => {
-            if (navigator.onLine) {
-                router.refresh();
-            }
-        }, 60000);
-
-        return () => clearInterval(interval);
-    }, [router]);
 
     return (
         <div className="min-h-screen p-4 max-w-[1920px] mx-auto"> {/* Reduced base padding */}
@@ -121,17 +153,26 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                 </div>
                 <div className="mt-4 md:mt-0 flex flex-wrap items-center gap-4">
                     {/* Date Picker */}
-                    <input
-                        type="date"
-                        value={data.date || ''}
-                        onChange={(e) => {
-                            const newDate = e.target.value;
-                            if (newDate) {
-                                router.push(`${pathname}?date=${newDate}`);
-                            }
-                        }}
-                        className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-2.5 shadow-sm"
-                    />
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block p-2.5 shadow-sm"
+                        />
+                        <button
+                            onClick={() => {
+                                if (selectedDate) {
+                                    startTransition(() => {
+                                        router.push(`${pathname}?date=${selectedDate}`);
+                                    });
+                                }
+                            }}
+                            className="bg-white/50 hover:bg-emerald-100 text-slate-800 font-bold px-4 py-2 rounded-lg text-sm transition-all shadow-sm active:scale-95 border border-slate-200"
+                        >
+                            Submit
+                        </button>
+                    </div>
 
                     <div className="glass-panel px-4 py-2 rounded-lg flex items-center bg-white/50 border border-slate-200">
                         <span className="text-xs text-slate-500 mr-2">LIVE MONITORING</span>
