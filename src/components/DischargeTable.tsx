@@ -822,7 +822,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                         </tr>
 
                         <tr className="bg-slate-100 font-bold text-slate-900 border-t border-slate-200">
-                            <td colSpan={showInitiatedDate ? 3 : 2} className="p-2 text-center text-slate-500 uppercase tracking-widest text-sm">
+                            <td colSpan={(showInitiatedDate ? 3 : 2) + (showConsultant ? 1 : 0)} className="p-2 text-center text-slate-500 uppercase tracking-widest text-sm">
                                 Total Time
                             </td>
                             <td className="p-2 text-center">
