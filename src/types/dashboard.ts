@@ -5,6 +5,8 @@ export interface TimelineItem {
   wardBed: string;
   paymentType: string;
   dischargeStart: string;
+  consultantName?: string;
+  drugsReturned?: string;
   // Dynamic structure fields
   firstDeptAck?: string | null;
   firstDeptDone?: string | null;
@@ -23,6 +25,8 @@ export interface SLAItem {
   uhid: string;
   wardBed: string;
   paymentType: string;
+  consultantName?: string;
+  drugsReturned?: string;
   // Dynamic structure fields
   firstDeptDelay: string;
   billReceivedDelay: string;

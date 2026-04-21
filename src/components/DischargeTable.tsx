@@ -74,6 +74,8 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
         let valStr = '';
         if (key === 'Overall Time') {
             valStr = row.sla?.overallDelay || '';
+        } else if (key === 'Consultant') {
+            valStr = row.consultantName || '';
         } else if (key === 'Drugs Returned') {
             // Better to parse row data directly for Drugs Returned Delay or rely on row.sla?.firstDeptDelay if reliable.
             // Actually, based on logic below:
@@ -131,11 +133,12 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
         return item ? formatTargetDuration(`${parseInt(item.targetTotalTat) || 0} mins`) : 'N/A';
     }, [timeline]);
 
-    // Merge timeline and SLA by ticketId
     const rawMergedData = timeline.map(item => {
         const slaItem = sla.find(s => s.ticketId === item.ticketId);
         return { ...item, sla: slaItem };
     });
+
+    const showConsultant = rawMergedData.some(row => row.consultantName && row.consultantName !== 'N/A' && row.consultantName !== 'NA' && row.consultantName.trim() !== '');
 
     // Let's use `multi_replace_file_content` to be surgical.
 
@@ -177,7 +180,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
             data.sort((a, b) => {
                 const getIsPending = (row: any, dept: string) => {
                     if (dept === 'Overall Time') return row.sla?.overallDelay === 'Pending';
-                    if (dept === 'Drugs Returned') return !!row.firstDeptAck && !row.firstDeptAckSuccess;
+                    if (dept === 'Drugs Returned') return row.drugsReturned?.toLowerCase() === 'yes' && !!row.firstDeptAck && !row.firstDeptAckSuccess;
 
                     const deptIndex = configuredDepartments.indexOf(dept);
                     const isInitiated = deptIndex === 0 ? !!row.firstDeptAck : !!row.departmentInitiatedTimes?.[dept];
@@ -237,8 +240,8 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
     // Helper to calculate stats
     const getDeptStats = (dept: string) => {
         if (dept === 'Drugs Returned') {
-            const pendingBills = mergedData.filter(r => r.firstDeptAck && !r.firstDeptAckSuccess).length;
-            const completedBills = mergedData.filter(r => r.firstDeptAckSuccess).length;
+            const pendingBills = mergedData.filter(r => r.drugsReturned?.toLowerCase() === 'yes' && r.firstDeptAck && !r.firstDeptAckSuccess).length;
+            const completedBills = mergedData.filter(r => r.firstDeptAckSuccess).length; // Kept completed total regardless of yes/no/na to match Overall completion or Billing if needed. Or we can filter by yes? Let's filter pending by 'yes'.
             return { pending: pendingBills, completed: completedBills };
         }
 
@@ -315,6 +318,13 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     </div>
                                 </th>
                             )}
+                            {showConsultant && (
+                                <th className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[100px] text-center align-middle">
+                                    <div className="flex items-center justify-center h-full">
+                                        Consultant
+                                    </div>
+                                </th>
+                            )}
                             <th
                                 className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[140px] text-center align-middle cursor-pointer hover:bg-slate-200 transition-colors select-none"
                                 onClick={() => handleSort('Overall Time')}
@@ -384,7 +394,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                         {/* Pending Count Row - Moved to Header */}
                         <tr className="bg-slate-50 font-bold text-slate-900 border-b border-slate-200 sticky top-12 z-20 shadow-sm h-7">
                             <td
-                                colSpan={showInitiatedDate ? 3 : 2}
+                                colSpan={(showInitiatedDate ? 3 : 2) + (showConsultant ? 1 : 0)}
                                 className="p-1 pl-2 text-center text-slate-500 uppercase tracking-widest text-[10px]"
                             >
                                 Pending Count
@@ -456,7 +466,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                         {/* Target TAT Row - Demo Only */}
                         {isDemo && (
                             <tr className="bg-slate-50 border-b border-slate-200 sticky top-[76px] z-20 shadow-sm h-5">
-                                <td colSpan={3} className="p-1 pl-4 text-left align-middle font-bold text-slate-500 text-xs">
+                                <td colSpan={(showInitiatedDate ? 4 : 3) + (showConsultant ? 1 : 0)} className="p-1 pl-4 text-left align-middle font-bold text-slate-500 text-xs">
                                     <div className="flex items-center gap-4">
                                         <span className="text-slate-900 font-bold uppercase mr-1">TARGET TAT:</span>
                                         <div className="flex items-center gap-2">
@@ -520,6 +530,11 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                             {formatDate(row.dischargeStart)}
                                         </td>
                                     )}
+                                    {showConsultant && (
+                                        <td className="p-2 text-slate-600 font-medium text-center">
+                                            {row.consultantName && row.consultantName !== 'N/A' && row.consultantName !== 'NA' ? row.consultantName : ''}
+                                        </td>
+                                    )}
 
                                     {/* Merged Overall Time Taken & Delay */}
                                     <td className="p-2 font-mono align-top text-center">
@@ -578,31 +593,32 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                         {(() => {
                                             const isInitiated = !!row.firstDeptAck;
                                             const isCompleted = !!row.firstDeptAckSuccess;
+                                            const drugsStatus = row.drugsReturned?.toLowerCase() || 'n/a';
 
-                                            // if (isInitiated && !isCompleted) {
-                                            //     return (
-                                            //         <div className="flex flex-col items-center">
-                                            //             <span className="text-xs font-bold text-blue-600 block">
-                                            //                 {formatTime(row.firstDeptAck ?? null)}
-                                            //             </span>
-                                            //             {isPastDate ? null : (
-                                            //                 <>
-                                            //                     {isPastDate ? null : (
-                                            //                         <div className="h-6 flex items-center justify-center w-full">
-                                            //                             <LiveTimer
-                                            //                                 startTime={row.firstDeptAck!}
-                                            //                                 slaDuration={15}
-                                            //                                 warningMin={5} // 15m SLA: 0-10 Green, 10-15 Yellow
-                                            //                                 isExtended={false}
-                                            //                                 showGif={showGif}
-                                            //                             />
-                                            //                         </div>
-                                            //                     )}
-                                            //                 </>
-                                            //             )}
-                                            //         </div>
-                                            //     );
-                                            // }
+                                            if (drugsStatus === 'no') {
+                                                return <span className="text-slate-400 font-mono">-</span>;
+                                            }
+
+                                            if (drugsStatus === 'yes' && isInitiated && !isCompleted) {
+                                                return (
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-xs font-bold text-blue-600 block">
+                                                            {formatTime(row.firstDeptAck ?? null)}
+                                                        </span>
+                                                        {isPastDate || hideTimer ? null : (
+                                                            <div className="h-6 flex items-center justify-center w-full">
+                                                                <LiveTimer
+                                                                    startTime={row.firstDeptAck!}
+                                                                    slaDuration={15}
+                                                                    warningMin={5}
+                                                                    isExtended={false}
+                                                                    showGif={showGif}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            }
 
                                             if (isCompleted) {
                                                 return (
@@ -620,6 +636,10 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                                         </span>
                                                     </div>
                                                 );
+                                            }
+
+                                            if (drugsStatus === 'n/a') {
+                                                return null;
                                             }
 
                                             return <span className="text-slate-400 font-mono">-</span>;
@@ -719,7 +739,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                         {/* Footer Rows - Keeping similar logic but with adjusted colSpan */}
                         <tr className="bg-slate-50 font-bold text-slate-900 border-t-2 border-slate-200">
                             <td
-                                colSpan={showInitiatedDate ? 3 : 2}
+                                colSpan={(showInitiatedDate ? 3 : 2) + (showConsultant ? 1 : 0)}
                                 className="p-2 text-center text-slate-500 uppercase tracking-widest text-sm"
                             >
                                 Pending Count
@@ -762,7 +782,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
 
                         <tr className="bg-slate-50 font-bold text-slate-900 border-t border-slate-200">
                             <td
-                                colSpan={showInitiatedDate ? 3 : 2}
+                                colSpan={(showInitiatedDate ? 3 : 2) + (showConsultant ? 1 : 0)}
                                 className="p-2 text-center text-slate-500 uppercase tracking-widest text-sm"
                             >
                                 Completed Count
@@ -876,7 +896,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                         </tr>
                         {!isDemo && !showInitiatedDate && (
                             <tr className="bg-slate-100 font-bold text-slate-900 border-t border-slate-200 sticky bottom-0 z-20 shadow-inner">
-                                <td colSpan={showInitiatedDate ? 4 : 3} className="p-1 text-left text-xs font-bold text-slate-500 uppercase tracking-wider pl-4">
+                                <td colSpan={(showInitiatedDate ? 4 : 3) + (showConsultant ? 1 : 0)} className="p-1 text-left text-xs font-bold text-slate-500 uppercase tracking-wider pl-4">
                                     <div className="flex items-center gap-6">
                                         <span>Target TAT:</span>
                                         <div className="flex items-center gap-2">
