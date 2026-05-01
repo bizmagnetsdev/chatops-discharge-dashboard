@@ -54,6 +54,11 @@ export const formatDelayString = (delayStr: string | null | undefined): string =
     if (!match) return delayStr;
 
     const totalMinutes = parseInt(match[0], 10);
+    
+    if (totalMinutes === 0) {
+        return '-';
+    }
+
     if (totalMinutes < 60) {
         // Just replace plus with + if present
         return delayStr.replace('plus', '+').replace('+ ', '+');
@@ -156,14 +161,18 @@ export const isDelayed = (delayString: string): boolean => {
 };
 
 export const getStatusColor = (status: string | null | undefined): string => {
-    if (!status || status === 'Pending' || status === '-') return 'text-slate-400';
-    if (status === 'NA') return 'text-slate-600';
+    if (!status || status === 'Pending' || status === '-' || status === 'NA') return 'text-slate-400';
+
+    const mins = parseDelayMinutes(status);
+    if (mins === 0 && !status.includes('plus') && !status.includes('+')) {
+        return 'text-slate-400 font-bold';
+    }
 
     // Explicit "plus" or "+"
-    if (status.includes('plus') || status.includes('+')) return 'status-red font-bold';
+    if (status.includes('plus') || status.includes('+') || mins > 0) return 'status-red font-bold';
 
-    // Explicit negative or 0
-    if (status.includes('-') || status === '0 mins') return 'status-green font-bold';
+    // Explicit negative
+    if (status.includes('-') || mins < 0) return 'status-green font-bold';
 
     // Positive number without "plus" (e.g. "1 mins") -> Red
     // Check if it starts with a digit
