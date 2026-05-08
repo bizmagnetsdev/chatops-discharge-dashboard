@@ -206,6 +206,7 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                     workflow={workflow}
                     filterStatus={filterStatus}
                     isDemo={isDemo}
+                    showCancel={!isDemo}
                 />
             </main>
             <OfflineBanner />

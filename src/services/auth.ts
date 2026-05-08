@@ -20,6 +20,7 @@ export interface UserDetailsDTO {
     userName: string;
     flowName: string;
     role: string;
+    accessLevel?: string;
     isActive: boolean;
     createdAt: string;
     updatedAt: string;

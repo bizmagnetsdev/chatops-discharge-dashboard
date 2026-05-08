@@ -5,7 +5,9 @@ import { Workflow } from '@/types/dashboard';
 import { formatTime, getStatusColor, parseDelayMinutes, calculateCompletionTime, formatDuration, formatDelayString, calculateBillDelay, formatDate } from '@/utils/dateUtils';
 import clsx from 'clsx';
 import LiveTimer from './LiveTimer';
-import { isBefore, startOfDay, parseISO } from 'date-fns';
+import { isBefore, startOfDay, parseISO, format } from 'date-fns';
+import { cancelTicket } from '@/app/actions';
+import toast from 'react-hot-toast';
 
 const TAT_MS_REGEX = /^\d/; // Matches "1 mins" etc which start with digit
 
@@ -15,9 +17,33 @@ interface DischargeTableProps {
     isDemo?: boolean;
     hideTimer?: boolean;
     showInitiatedDate?: boolean;
+    showCancel?: boolean;
 }
 
-const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus = 'all', isDemo = false, hideTimer = false, showInitiatedDate = false }) => {
+const DischargeTable: React.FC<DischargeTableProps> = ({ 
+    workflow, 
+    filterStatus = 'all', 
+    isDemo = false, 
+    hideTimer = false, 
+    showInitiatedDate = false,
+    showCancel = false 
+}) => {
+    const [canCancelByRole, setCanCancelByRole] = React.useState(false);
+
+    React.useEffect(() => {
+        const userDetailsStr = typeof window !== 'undefined' ? localStorage.getItem('userDetails') : null;
+        if (userDetailsStr) {
+            try {
+                const userDetails = JSON.parse(userDetailsStr);
+                setCanCancelByRole(userDetails.accessLevel === 'cancel_discharge');
+            } catch (e) {
+                console.error('Error parsing userDetails', e);
+            }
+        }
+    }, []);
+
+    const effectiveShowCancel = showCancel && canCancelByRole;
+
     const { timeline, sla, configuredDepartments = [] } = workflow;
     const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -68,6 +94,67 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
     const handlePendingSort = (dept: string) => {
         setPendingSortDept(prev => prev === dept ? null : dept);
         setSortConfig({ key: null }); // Reset column sort when pending sort is used
+    };
+
+    const isToday = React.useMemo(() => {
+        if (!workflow.reportDate) return false;
+        try {
+            const reportDate = format(parseISO(workflow.reportDate), 'yyyy-MM-dd');
+            const today = format(new Date(), 'yyyy-MM-dd');
+            return reportDate === today;
+        } catch (e) {
+            return false;
+        }
+    }, [workflow.reportDate]);
+
+    const handleCancel = async (ticketId: string | number) => {
+        const loadingToast = toast.loading('Cancelling ticket...');
+        try {
+            const result = await cancelTicket(ticketId.toString());
+            if (result.success) {
+                toast.success('Ticket cancelled successfully', { id: loadingToast });
+                // Small delay to allow toast to be seen before reload
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                toast.error(result.error || 'Failed to cancel ticket', { id: loadingToast });
+            }
+        } catch (error) {
+            toast.error('An error occurred while cancelling the ticket', { id: loadingToast });
+        }
+    };
+
+    const confirmCancel = (ticketId: string | number) => {
+        toast((t) => (
+            <div className="flex flex-col gap-2 p-1">
+                <span className="font-bold text-slate-800">Confirm Cancellation</span>
+                <p className="text-xs text-slate-500">Are you sure you want to cancel this record?</p>
+                <div className="flex gap-2 mt-2">
+                    <button
+                        onClick={() => {
+                            toast.dismiss(t.id);
+                            handleCancel(ticketId);
+                        }}
+                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm"
+                    >
+                        Yes, Cancel
+                    </button>
+                    <button
+                        onClick={() => toast.dismiss(t.id)}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md text-xs font-bold transition-colors"
+                    >
+                        Dismiss
+                    </button>
+                </div>
+            </div>
+        ), { 
+            duration: 6000,
+            position: 'top-center',
+            style: {
+                border: '1px solid #fee2e2',
+                padding: '12px',
+                color: '#713200',
+            }
+        });
     };
 
     const getSortValue = (row: any, key: string) => {
@@ -389,12 +476,19 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     </th>
                                 );
                             })}
+                            {effectiveShowCancel && isToday && (
+                                <th className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[80px] text-center align-middle">
+                                    <div className="flex items-center justify-center h-full">
+                                        Action
+                                    </div>
+                                </th>
+                            )}
                         </tr>
 
                         {/* Pending Count Row - Moved to Header */}
                         <tr className="bg-slate-50 font-bold text-slate-900 border-b border-slate-200 sticky top-12 z-20 shadow-sm h-7">
                             <td
-                                colSpan={(showInitiatedDate ? 3 : 2) + (showConsultant ? 1 : 0)}
+                                colSpan={2 + (showInitiatedDate ? 1 : 0) + (showConsultant ? 1 : 0)}
                                 className="p-1 pl-2 text-center text-slate-500 uppercase tracking-widest text-[10px]"
                             >
                                 Pending Count
@@ -416,7 +510,6 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     <span className="text-slate-400 font-mono text-[10px]">-</span>
                                 )}
                             </td>
-
                             {/* Drugs Returned Pending */}
                             <td
                                 className={`p-1 text-center cursor-pointer hover:bg-slate-100 transition-colors ${pendingSortDept === 'Drugs Returned' ? 'bg-yellow-50' : ''}`}
@@ -461,6 +554,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     </td>
                                 );
                             })}
+                            {effectiveShowCancel && isToday && <td className="p-1 text-center bg-slate-50 border-b border-slate-200"></td>}
                         </tr>
 
                         {/* Target TAT Row - Demo Only */}
@@ -495,6 +589,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                         </td>
                                     );
                                 })}
+                                {effectiveShowCancel && isToday && <td className="p-1 text-center bg-slate-50 border-b border-slate-200"></td>}
                             </tr>
                         )}
                     </thead>
@@ -732,6 +827,16 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                             );
                                         })
                                     }
+                                {effectiveShowCancel && isToday && (
+                                    <td className="p-2 align-middle text-center">
+                                        <button
+                                            onClick={() => confirmCancel(row.ticketId)}
+                                            className="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1 rounded-md text-xs font-bold border border-red-200 transition-colors shadow-sm active:scale-95"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </td>
+                                )}
                                 </tr>
                             );
                         })}
@@ -739,7 +844,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                         {/* Footer Rows - Keeping similar logic but with adjusted colSpan */}
                         <tr className="bg-slate-50 font-bold text-slate-900 border-t-2 border-slate-200">
                             <td
-                                colSpan={(showInitiatedDate ? 3 : 2) + (showConsultant ? 1 : 0)}
+                                colSpan={2 + (showInitiatedDate ? 1 : 0) + (showConsultant ? 1 : 0)}
                                 className="p-2 text-center text-slate-500 uppercase tracking-widest text-sm"
                             >
                                 Pending Count
@@ -778,11 +883,12 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     </td>
                                 );
                             })}
+                            {effectiveShowCancel && isToday && <td className="p-2 text-center bg-slate-50 border-t-2 border-slate-200"></td>}
                         </tr>
 
                         <tr className="bg-slate-50 font-bold text-slate-900 border-t border-slate-200">
                             <td
-                                colSpan={(showInitiatedDate ? 3 : 2) + (showConsultant ? 1 : 0)}
+                                colSpan={2 + (showInitiatedDate ? 1 : 0) + (showConsultant ? 1 : 0)}
                                 className="p-2 text-center text-slate-500 uppercase tracking-widest text-sm"
                             >
                                 Completed Count
@@ -819,12 +925,15 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     </td>
                                 );
                             })}
+                            {effectiveShowCancel && isToday && <td className="p-2 text-center bg-slate-50 border-t border-slate-200"></td>}
                         </tr>
 
                         <tr className="bg-slate-100 font-bold text-slate-900 border-t border-slate-200">
-                            <td colSpan={(showInitiatedDate ? 3 : 2) + (showConsultant ? 1 : 0)} className="p-2 text-center text-slate-500 uppercase tracking-widest text-sm">
+                            <td colSpan={2 + (showInitiatedDate ? 1 : 0) + (showConsultant ? 1 : 0)} className="p-2 text-center text-slate-500 uppercase tracking-widest text-sm">
                                 Total Time
                             </td>
+                            {/* ... existing cells ... */}
+                            {/* I'll just replace the whole row to be safe */}
                             <td className="p-2 text-center">
                                 {(() => {
                                     const totalOverallDelay = mergedData.reduce((acc, row) => {
@@ -841,12 +950,6 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     );
                                 })()}
                             </td>
-                            {/* Skipping Overall Delay Sum column since it was part of the merged column logic in footer? 
-                                Actually, the footer structure needs to match the body columns.
-                                Body: Name | Ward | Overall Time | Bill Received | Depts...
-                                Footer: Label (Colspan 3 handles Name+Ward+Overall) | Bill Received | Depts...
-                            */}
-
                             <td className="p-2 text-center">
                                 {(() => {
                                     const totalBillDelay = mergedData.reduce((acc, row) => {
@@ -864,8 +967,6 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     );
                                 })()}
                             </td>
-
-
                             {configuredDepartments.map((dept, index) => {
                                 const slaMins = workflow.departmentSlaConfig?.[dept] ?? 0;
                                 const hasSla = slaMins > 0;
@@ -893,10 +994,11 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                     </td>
                                 );
                             })}
+                            {effectiveShowCancel && isToday && <td className="p-2 text-center bg-slate-100 border-t border-slate-200"></td>}
                         </tr>
                         {!isDemo && !showInitiatedDate && (
                             <tr className="bg-slate-100 font-bold text-slate-900 border-t border-slate-200 sticky bottom-0 z-20 shadow-inner">
-                                <td colSpan={(showInitiatedDate ? 4 : 3) + (showConsultant ? 1 : 0)} className="p-1 text-left text-xs font-bold text-slate-500 uppercase tracking-wider pl-4">
+                                <td colSpan={3 + (showInitiatedDate ? 1 : 0) + (showConsultant ? 1 : 0)} className="p-1 text-left text-xs font-bold text-slate-500 uppercase tracking-wider pl-4">
                                     <div className="flex items-center gap-6">
                                         <span>Target TAT:</span>
                                         <div className="flex items-center gap-2">
@@ -929,6 +1031,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({ workflow, filterStatus 
                                         </td>
                                     );
                                 })}
+                                {effectiveShowCancel && isToday && <td className="p-2 text-center bg-slate-100 border-t border-slate-200 sticky bottom-0 z-20"></td>}
                             </tr>
                         )}
                     </tbody>

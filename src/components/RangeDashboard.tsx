@@ -8,6 +8,7 @@ import DischargeTable from './DischargeTable';
 import OfflineBanner from './OfflineBanner';
 import DateRangePicker from './DateRangePicker';
 import { getDownloadCsvUrl } from '@/app/actions';
+import toast from 'react-hot-toast';
 
 interface RangeDashboardProps {
     data: DashboardResponse;
@@ -37,12 +38,13 @@ const RangeDashboard: React.FC<RangeDashboardProps> = ({ data, flowName, fromDat
             if (url) {
                 // Download the file
                 window.open(url, '_blank');
+                toast.success('CSV download started');
             } else {
-                alert('No CSV available for this date range.');
+                toast.error('No CSV available for this date range.');
             }
         } catch (error) {
             console.error('Download error:', error);
-            alert('Failed to download CSV.');
+            toast.error('Failed to download CSV.');
         } finally {
             setIsDownloading(false);
         }
@@ -146,6 +148,7 @@ const RangeDashboard: React.FC<RangeDashboardProps> = ({ data, flowName, fromDat
                                     filterStatus="all"
                                     hideTimer={true}
                                     showInitiatedDate={true}
+                                    showCancel={false}
                                 />
                             </div>
                         ))}

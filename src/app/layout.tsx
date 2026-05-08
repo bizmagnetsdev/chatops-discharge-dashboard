@@ -11,6 +11,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+import ToastProvider from "@/components/ToastProvider";
 
 export default function RootLayout({
   children,
@@ -22,6 +23,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <ToastProvider />
         {children}
       </body>
     </html>
