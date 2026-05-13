@@ -763,6 +763,12 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
 
                                             const isCompleted = !!doneTime;
 
+                                            const isSkipped = row.skippedDepartments?.map((d: string) => d.toLowerCase()).includes(dept.toLowerCase());
+                                            const ackSuccessTime = deptIndex === 0 
+                                                ? row.firstDeptAckSuccess 
+                                                : row.departmentAckSuccessTimes?.[dept];
+                                            const showNotAckSymbol = isInitiated && !isSkipped && !ackSuccessTime;
+
                                             if (isInitiated && !isCompleted) {
                                                 const startTime = deptIndex === 0
                                                     ? row.firstDeptAck
@@ -774,9 +780,14 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                     return (
                                                         <td key={`${dept}-${row.ticketId}`} className="p-4 border-b border-slate-200 align-top text-center">
                                                             <div className="flex flex-col items-center">
-                                                                <span className="text-xs font-bold text-blue-600 block">
-                                                                    {formatTime(startTime)}
-                                                                </span>
+                                                                <div className="flex items-center justify-center gap-1">
+                                                                    <span className="text-xs font-bold text-blue-600 block">
+                                                                        {formatTime(startTime)}
+                                                                    </span>
+                                                                    {showNotAckSymbol && (
+                                                                        <span title="Not Acknowledged" className="text-red-500 font-bold cursor-default text-[14px]">!</span>
+                                                                    )}
+                                                                </div>
                                                                 {isPastDate || hideTimer ? (
                                                                     null
                                                                 ) : (
@@ -811,14 +822,23 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                     <div className="flex flex-col items-center">
                                                         {doneTime ? (
                                                             <>
-                                                                <span className="text-xs text-blue-600 font-bold whitespace-nowrap block">
-                                                                    {formatTime(deptIndex === 0 ? (row.firstDeptAck ?? null) : (row.departmentInitiatedTimes?.[dept] ?? null))}
-                                                                </span>
+                                                                <div className="flex items-center justify-center gap-1">
+                                                                    <span className="text-xs text-blue-600 font-bold whitespace-nowrap block">
+                                                                        {formatTime(deptIndex === 0 ? (row.firstDeptAck ?? null) : (row.departmentInitiatedTimes?.[dept] ?? null))}
+                                                                    </span>
+                                                                    {showNotAckSymbol && (
+                                                                        <span title="Not Acknowledged" className="text-red-500 font-bold cursor-default text-[14px]">!</span>
+                                                                    )}
+                                                                </div>
                                                                 <span className="text-xs text-purple-600 font-bold whitespace-nowrap block">
                                                                     {formatTime(doneTime ?? null)}
                                                                 </span>
                                                             </>
-                                                        ) : null}
+                                                        ) : (
+                                                            showNotAckSymbol && (
+                                                                <span title="Not Acknowledged" className="text-red-500 font-bold cursor-default text-[14px] leading-none mb-1">!</span>
+                                                            )
+                                                        )}
                                                         <span className={clsx(statusColorClass, "text-xs font-bold")}>
                                                             {formatDelayString(tatMs)}
                                                         </span>

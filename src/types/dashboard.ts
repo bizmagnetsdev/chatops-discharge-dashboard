@@ -14,9 +14,11 @@ export interface TimelineItem {
   departmentCompletionTimes: Record<string, string | null>;
   departmentInitiatedTimes?: Record<string, string>;
   departmentMoreTimeClicks?: Record<string, string>;
+  departmentAckSuccessTimes?: Record<string, string>;
   targetTotalTat: string;
   actualTotalTat: string;
   configuredDepartments: string[];
+  skippedDepartments?: string[];
 }
 
 export interface SLAItem {
