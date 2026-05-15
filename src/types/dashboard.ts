@@ -42,6 +42,9 @@ export interface Workflow {
   reportDate: string;
   configuredDepartments: string[];
   departmentSlaConfig?: Record<string, number>;
+  excludedParallelDepts?: string[];
+  strictTatCash?: string;
+  strictTatInsurance?: string;
   timeline: TimelineItem[];
   sla: SLAItem[];
   pendingCounts: Record<string, number> | null;

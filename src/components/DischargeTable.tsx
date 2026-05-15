@@ -166,25 +166,23 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
         } else if (key === 'Drugs Returned') {
             // Better to parse row data directly for Drugs Returned Delay or rely on row.sla?.firstDeptDelay if reliable.
             // Actually, based on logic below:
-            const isInitiated = !!row.firstDeptAck;
-            const isCompleted = !!row.firstDeptAckSuccess;
+            const initTime = row.departmentInitiatedTimes?.['Pharmacy'] || row.departmentInitiatedTimes?.['Medical Store'];
+            const ackTime = row.departmentAckSuccessTimes?.['Pharmacy'] || row.departmentAckSuccessTimes?.['Medical Store'];
+            const isInitiated = !!initTime;
+            const isCompleted = !!ackTime;
             if (isInitiated && !isCompleted) {
                 // Pending - treat as low priority or infinity?
                 return -Infinity;
             }
             // For completed, get delay string
             if (isCompleted) {
-                const billDelay = calculateBillDelay(row.firstDeptAck, row.firstDeptAckSuccess);
+                const billDelay = calculateBillDelay(initTime, ackTime);
                 valStr = billDelay;
             }
         } else {
             // Department
             const deptIndex = configuredDepartments.indexOf(key);
-            if (deptIndex === 0) {
-                valStr = row.sla?.firstDeptDelay || '';
-            } else {
-                valStr = row.sla?.departmentDelays?.[key] || '';
-            }
+            valStr = row.sla?.departmentDelays?.[key] || (deptIndex === 0 ? row.sla?.firstDeptDelay : '') || '';
         }
 
         if (!valStr || valStr === 'Pending' || valStr === 'NA') return -Infinity; // Put Pending/NA at bottom
@@ -211,14 +209,20 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
     };
 
     const cashTarget = React.useMemo(() => {
+        if (workflow.strictTatCash) {
+            return formatTargetDuration(workflow.strictTatCash);
+        }
         const item = timeline.find(t => t.paymentType?.toLowerCase().includes('cash') && t.targetTotalTat);
         return item ? formatTargetDuration(`${parseInt(item.targetTotalTat) || 0} mins`) : 'N/A';
-    }, [timeline]);
+    }, [timeline, workflow.strictTatCash]);
 
     const insuranceTarget = React.useMemo(() => {
+        if (workflow.strictTatInsurance) {
+            return formatTargetDuration(workflow.strictTatInsurance);
+        }
         const item = timeline.find(t => (t.paymentType?.toLowerCase().includes('insurance') || t.paymentType?.toLowerCase().includes('tpa')) && t.targetTotalTat);
         return item ? formatTargetDuration(`${parseInt(item.targetTotalTat) || 0} mins`) : 'N/A';
-    }, [timeline]);
+    }, [timeline, workflow.strictTatInsurance]);
 
     const rawMergedData = timeline.map(item => {
         const slaItem = sla.find(s => s.ticketId === item.ticketId);
@@ -267,11 +271,11 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
             data.sort((a, b) => {
                 const getIsPending = (row: any, dept: string) => {
                     if (dept === 'Overall Time') return row.sla?.overallDelay === 'Pending';
-                    if (dept === 'Drugs Returned') return row.drugsReturned?.toLowerCase() === 'yes' && !!row.firstDeptAck && !row.firstDeptAckSuccess;
+                    if (dept === 'Drugs Returned') return row.drugsReturned?.toLowerCase() === 'yes' && !!(row.departmentInitiatedTimes?.['Pharmacy'] || row.departmentInitiatedTimes?.['Medical Store']) && !(row.departmentAckSuccessTimes?.['Pharmacy'] || row.departmentAckSuccessTimes?.['Medical Store']);
 
                     const deptIndex = configuredDepartments.indexOf(dept);
-                    const isInitiated = deptIndex === 0 ? !!row.firstDeptAck : !!row.departmentInitiatedTimes?.[dept];
-                    const isCompleted = deptIndex === 0 ? !!row.firstDeptDone : !!row.departmentCompletionTimes?.[dept];
+                    const isInitiated = !!row.departmentInitiatedTimes?.[dept];
+                    const isCompleted = !!row.departmentCompletionTimes?.[dept];
                     return isInitiated && !isCompleted;
                 };
 
@@ -327,39 +331,28 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
     // Helper to calculate stats
     const getDeptStats = (dept: string) => {
         if (dept === 'Drugs Returned') {
-            const pendingBills = mergedData.filter(r => r.drugsReturned?.toLowerCase() === 'yes' && r.firstDeptAck && !r.firstDeptAckSuccess).length;
-            const completedBills = mergedData.filter(r => r.firstDeptAckSuccess).length; // Kept completed total regardless of yes/no/na to match Overall completion or Billing if needed. Or we can filter by yes? Let's filter pending by 'yes'.
+            const pendingBills = mergedData.filter(r => r.drugsReturned?.toLowerCase() === 'yes' && (r.departmentInitiatedTimes?.['Pharmacy'] || r.departmentInitiatedTimes?.['Medical Store']) && !(r.departmentAckSuccessTimes?.['Pharmacy'] || r.departmentAckSuccessTimes?.['Medical Store'])).length;
+            const completedBills = mergedData.filter(r => (r.departmentAckSuccessTimes?.['Pharmacy'] || r.departmentAckSuccessTimes?.['Medical Store'])).length; // Kept completed total regardless of yes/no/na to match Overall completion or Billing if needed. Or we can filter by yes? Let's filter pending by 'yes'.
             return { pending: pendingBills, completed: completedBills };
         }
 
         const pendingCount = mergedData.filter(row => {
-            const slaVal = dept === configuredDepartments[0]
-                ? row.sla?.firstDeptDelay
-                : row.sla?.departmentDelays?.[dept];
+            const slaVal = row.sla?.departmentDelays?.[dept] || (dept === configuredDepartments[0] ? row.sla?.firstDeptDelay : undefined);
 
             if (slaVal === 'NA' || slaVal === undefined) return false;
 
             // Check initiation
-            const isInitiated = dept === configuredDepartments[0]
-                ? !!row.firstDeptAck
-                : !!row.departmentInitiatedTimes?.[dept];
-
-            const isCompleted = dept === configuredDepartments[0]
-                ? !!row.firstDeptDone
-                : !!row.departmentCompletionTimes?.[dept];
+            const isInitiated = !!row.departmentInitiatedTimes?.[dept];
+            const isCompleted = !!row.departmentCompletionTimes?.[dept];
 
             return isInitiated && !isCompleted;
         }).length;
 
         const completedCount = mergedData.filter(row => {
-            const slaVal = dept === configuredDepartments[0]
-                ? row.sla?.firstDeptDelay
-                : row.sla?.departmentDelays?.[dept];
+            const slaVal = row.sla?.departmentDelays?.[dept] || (dept === configuredDepartments[0] ? row.sla?.firstDeptDelay : undefined);
 
             // If explicitly completed in SLA or has done time
-            const isDone = dept === configuredDepartments[0]
-                ? !!row.firstDeptDone
-                : !!row.departmentCompletionTimes?.[dept];
+            const isDone = !!row.departmentCompletionTimes?.[dept];
 
             return isDone;
         }).length;
@@ -596,7 +589,9 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                     <tbody>
                         {mergedData.map((row) => {
                             const isDelayed = row.sla?.overallDelay?.includes('plus');
-                            const billDelay = calculateBillDelay(row.firstDeptAck, row.firstDeptAckSuccess);
+                            const drugsInitTime = row.departmentInitiatedTimes?.['Pharmacy'] || row.departmentInitiatedTimes?.['Medical Store'];
+                            const drugsAckTime = row.departmentAckSuccessTimes?.['Pharmacy'] || row.departmentAckSuccessTimes?.['Medical Store'];
+                            const billDelay = calculateBillDelay(drugsInitTime, drugsAckTime);
                             const billStatusColor = getStatusColor(billDelay);
 
                             const isPending = row.sla?.overallDelay === 'Pending';
@@ -686,8 +681,8 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                     {/* Drugs Returned Column */}
                                     <td className="p-2 text-center align-top">
                                         {(() => {
-                                            const isInitiated = !!row.firstDeptAck;
-                                            const isCompleted = !!row.firstDeptAckSuccess;
+                                            const isInitiated = !!drugsInitTime;
+                                            const isCompleted = !!drugsAckTime;
                                             const drugsStatus = row.drugsReturned?.toLowerCase() || 'n/a';
 
                                             if (drugsStatus === 'no') {
@@ -698,12 +693,12 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                 return (
                                                     <div className="flex flex-col items-center">
                                                         <span className="text-xs font-bold text-blue-600 block">
-                                                            {formatTime(row.firstDeptAck ?? null)}
+                                                            {formatTime(drugsInitTime ?? null)}
                                                         </span>
                                                         {isPastDate || hideTimer ? null : (
                                                             <div className="h-6 flex items-center justify-center w-full">
                                                                 <LiveTimer
-                                                                    startTime={row.firstDeptAck!}
+                                                                    startTime={drugsInitTime!}
                                                                     slaDuration={15}
                                                                     warningMin={5}
                                                                     isExtended={false}
@@ -719,10 +714,10 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                 return (
                                                     <div className="flex flex-col items-center">
                                                         <span className="text-xs text-blue-600 font-bold whitespace-nowrap block">
-                                                            {formatTime(row.firstDeptAck ?? null)}
+                                                            {formatTime(drugsInitTime ?? null)}
                                                         </span>
                                                         <span className="text-xs text-purple-600 font-bold block">
-                                                            {formatTime(row.firstDeptAckSuccess ?? null)}
+                                                            {formatTime(drugsAckTime ?? null)}
                                                         </span>
                                                         <span className={clsx(billStatusColor, "text-xs font-bold",
                                                             !billStatusColor.includes('red') && billDelay !== 'Pending' && "text-slate-600"
@@ -746,33 +741,22 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                             let tatMs = 'NA';
                                             let doneTime: string | null | undefined = null;
 
-                                            if (deptIndex === 0) {
-                                                tatMs = row.sla?.firstDeptDelay || 'NA';
-                                                doneTime = row.firstDeptDone;
-                                            } else {
-                                                tatMs = row.sla?.departmentDelays?.[dept] || 'NA';
-                                                doneTime = row.departmentCompletionTimes?.[dept];
-                                            }
+                                            tatMs = row.sla?.departmentDelays?.[dept] || (deptIndex === 0 ? row.sla?.firstDeptDelay : 'NA') || 'NA';
+                                            doneTime = row.departmentCompletionTimes?.[dept];
 
                                             const slaMins = workflow.departmentSlaConfig?.[dept] ?? 0;
                                             const hasSla = slaMins > 0;
 
-                                            const isInitiated = deptIndex === 0
-                                                ? !!row.firstDeptAck
-                                                : !!row.departmentInitiatedTimes?.[dept];
+                                            const isInitiated = !!row.departmentInitiatedTimes?.[dept];
 
                                             const isCompleted = !!doneTime;
 
                                             const isSkipped = row.skippedDepartments?.map((d: string) => d.toLowerCase()).includes(dept.toLowerCase());
-                                            const ackSuccessTime = deptIndex === 0 
-                                                ? row.firstDeptAckSuccess 
-                                                : row.departmentAckSuccessTimes?.[dept];
-                                            const showNotAckSymbol = isInitiated && !isSkipped && !ackSuccessTime;
+                                            const ackSuccessTime = row.departmentAckSuccessTimes?.[dept];
+                                            const showNotAckSymbol = isInitiated && !isSkipped && !ackSuccessTime && dept.toLowerCase() !== 'cash counter';
 
                                             if (isInitiated && !isCompleted) {
-                                                const startTime = deptIndex === 0
-                                                    ? row.firstDeptAck
-                                                    : row.departmentInitiatedTimes?.[dept];
+                                                const startTime = row.departmentInitiatedTimes?.[dept];
 
                                                 const moreTimeClick = row.departmentMoreTimeClicks?.[dept];
 
@@ -824,7 +808,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                             <>
                                                                 <div className="flex items-center justify-center gap-1">
                                                                     <span className="text-xs text-blue-600 font-bold whitespace-nowrap block">
-                                                                        {formatTime(deptIndex === 0 ? (row.firstDeptAck ?? null) : (row.departmentInitiatedTimes?.[dept] ?? null))}
+                                                                        {formatTime(row.departmentInitiatedTimes?.[dept] ?? null)}
                                                                     </span>
                                                                     {showNotAckSymbol && (
                                                                         <span title="Not Acknowledged" className="text-red-500 font-bold cursor-default text-[14px]">!</span>
@@ -973,7 +957,9 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                             <td className="p-2 text-center">
                                 {(() => {
                                     const totalBillDelay = mergedData.reduce((acc, row) => {
-                                        const delayStr = calculateBillDelay(row.firstDeptAck, row.firstDeptAckSuccess);
+                                        const drugsInitTime = row.departmentInitiatedTimes?.['Pharmacy'] || row.departmentInitiatedTimes?.['Medical Store'];
+                                        const drugsAckTime = row.departmentAckSuccessTimes?.['Pharmacy'] || row.departmentAckSuccessTimes?.['Medical Store'];
+                                        const delayStr = calculateBillDelay(drugsInitTime, drugsAckTime);
                                         if (delayStr === 'Pending' || delayStr === 'NA') return acc;
                                         const parsed = parseDelayMinutes(delayStr);
                                         return acc + (parsed > 0 ? parsed : 0);
@@ -994,8 +980,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
 
                                 const totalDeptMinutes = mergedData.reduce((acc, row) => {
                                     let delayString = '0';
-                                    if (index === 0) delayString = row.sla?.firstDeptDelay || '0';
-                                    else delayString = row.sla?.departmentDelays?.[dept] || '0';
+                                    delayString = row.sla?.departmentDelays?.[dept] || (index === 0 ? row.sla?.firstDeptDelay : '0') || '0';
 
                                     if (delayString === 'Pending' || delayString === 'NA' || !delayString) return acc;
                                     const parsed = parseDelayMinutes(delayString);
