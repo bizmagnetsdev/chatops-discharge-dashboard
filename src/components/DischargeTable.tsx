@@ -35,7 +35,8 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
         if (userDetailsStr) {
             try {
                 const userDetails = JSON.parse(userDetailsStr);
-                setCanCancelByRole(userDetails.accessLevel === 'cancel_discharge');
+                const levels = (userDetails.accessLevel || '').split(',').map((s: string) => s.trim());
+                setCanCancelByRole(levels.includes('cancel_discharge'));
             } catch (e) {
                 console.error('Error parsing userDetails', e);
             }
