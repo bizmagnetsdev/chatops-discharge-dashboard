@@ -68,7 +68,7 @@ function UserForm({ initial, workflows, onSave, onClose, saving, isEdit }: UserF
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ mobileNumber: mobile, userName: name, flowName: flow, accessLevel: hasCancel ? 'cancel_discharge' : null });
+        onSave({ mobileNumber: mobile, userName: name, flowName: flow, accessLevel: hasCancel ? 'cancel_discharge' : 'none' });
     };
 
     const inputStyle: React.CSSProperties = {
