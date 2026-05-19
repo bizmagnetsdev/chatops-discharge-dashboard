@@ -66,9 +66,15 @@ function UserForm({ initial, workflows, onSave, onClose, saving, isEdit }: UserF
         (initial?.accessLevel || '').split(',').map(s => s.trim()).includes('cancel_discharge')
     );
 
+    const hasAdmin = (initial?.accessLevel || '').split(',').map(s => s.trim()).includes('admin');
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ mobileNumber: mobile, userName: name, flowName: flow, accessLevel: hasCancel ? 'cancel_discharge' : 'none' });
+        const roles = [];
+        if (hasCancel) roles.push('cancel_discharge');
+        if (hasAdmin) roles.push('admin');
+        const finalAccessLevel = roles.length > 0 ? roles.join(',') : 'none';
+        onSave({ mobileNumber: mobile, userName: name, flowName: flow, accessLevel: finalAccessLevel });
     };
 
     const inputStyle: React.CSSProperties = {
