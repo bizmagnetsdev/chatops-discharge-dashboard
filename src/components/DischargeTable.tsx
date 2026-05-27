@@ -191,6 +191,38 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
         return parseDelayMinutes(valStr);
     };
 
+    /**
+     * Returns the display-safe initiated time for a department.
+     * If the actual initiated time is before the previous department's completion
+     * time (due to async/event timing mismatches), we clamp it to the previous
+     * dept's completion time so the UI doesn't show a confusing "before" timestamp.
+     * This is purely a display adjustment — the raw data is not modified.
+     */
+    const getDisplayInitiatedTime = (row: any, dept: string, deptIndex: number): string | null | undefined => {
+        const rawTime = row.departmentInitiatedTimes?.[dept];
+        if (!rawTime) return rawTime;
+
+        // Walk backwards through configured departments to find the most recent
+        // non-skipped dept that has a completion time.
+        const skipped = (row.skippedDepartments || []).map((d: string) => d.toLowerCase());
+        for (let i = deptIndex - 1; i >= 0; i--) {
+            const prevDept = configuredDepartments[i];
+            if (skipped.includes(prevDept.toLowerCase())) continue;
+            const prevCompletionTime = row.departmentCompletionTimes?.[prevDept];
+            if (!prevCompletionTime) continue;
+
+            const rawMs = new Date(rawTime).getTime();
+            const prevMs = new Date(prevCompletionTime).getTime();
+
+            if (!isNaN(rawMs) && !isNaN(prevMs) && rawMs < prevMs) {
+                // Clamp: show prev completion time as the initiated time
+                return prevCompletionTime;
+            }
+            break; // Found the relevant previous dept — no need to go further back
+        }
+        return rawTime;
+    };
+
     // Calculate Target TAT for Cash and Insurance from Timeline (Old Logic)
     const formatTargetDuration = (str: string) => {
         const mins = parseInt(str) || 0;
@@ -592,6 +624,14 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                             const isDelayed = row.sla?.overallDelay?.includes('plus');
                             const drugsInitTime = row.departmentInitiatedTimes?.['Pharmacy'] || row.departmentInitiatedTimes?.['Medical Store'];
                             const drugsAckTime = row.departmentAckSuccessTimes?.['Pharmacy'] || row.departmentAckSuccessTimes?.['Medical Store'];
+                            // Find Pharmacy/Medical Store index in configuredDepartments for clamping
+                            const drugsDeptName = configuredDepartments.find(
+                                (d: string) => d.toLowerCase() === 'pharmacy' || d.toLowerCase() === 'medical store'
+                            );
+                            const drugsDeptIndex = drugsDeptName ? configuredDepartments.indexOf(drugsDeptName) : -1;
+                            const displayDrugsInitTime = drugsDeptName && drugsDeptIndex >= 0
+                                ? getDisplayInitiatedTime(row, drugsDeptName, drugsDeptIndex)
+                                : drugsInitTime;
                             const billDelay = calculateBillDelay(drugsInitTime, drugsAckTime);
                             const billStatusColor = getStatusColor(billDelay);
 
@@ -694,7 +734,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                 return (
                                                     <div className="flex flex-col items-center">
                                                         <span className="text-xs font-bold text-blue-600 block">
-                                                            {formatTime(drugsInitTime ?? null)}
+                                                            {formatTime(displayDrugsInitTime ?? null)}
                                                         </span>
                                                         {isPastDate || hideTimer ? null : (
                                                             <div className="h-6 flex items-center justify-center w-full">
@@ -715,7 +755,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                 return (
                                                     <div className="flex flex-col items-center">
                                                         <span className="text-xs text-blue-600 font-bold whitespace-nowrap block">
-                                                            {formatTime(drugsInitTime ?? null)}
+                                                            {formatTime(displayDrugsInitTime ?? null)}
                                                         </span>
                                                         <span className="text-xs text-purple-600 font-bold block">
                                                             {formatTime(drugsAckTime ?? null)}
@@ -756,8 +796,10 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                             const ackSuccessTime = row.departmentAckSuccessTimes?.[dept];
                                             const showNotAckSymbol = isInitiated && !isSkipped && !ackSuccessTime && dept.toLowerCase() !== 'cash counter';
 
-                                            if (isInitiated && !isCompleted) {
+                                                if (isInitiated && !isCompleted) {
                                                 const startTime = row.departmentInitiatedTimes?.[dept];
+                                                // Display-safe initiated time: clamped to prev dept completion if needed
+                                                const displayStartTime = getDisplayInitiatedTime(row, dept, deptIndex);
 
                                                 const moreTimeClick = row.departmentMoreTimeClicks?.[dept];
 
@@ -765,14 +807,20 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                     return (
                                                         <td key={`${dept}-${row.ticketId}`} className="p-4 border-b border-slate-200 align-top text-center">
                                                             <div className="flex flex-col items-center">
-                                                                <div className="flex items-center justify-center gap-1">
-                                                                    <span className="text-xs font-bold text-blue-600 block">
-                                                                        {formatTime(startTime)}
+                                                                <span className="text-xs font-bold text-blue-600 block">
+                                                                    {formatTime(displayStartTime ?? null)}
+                                                                </span>
+                                                                {ackSuccessTime ? (
+                                                                    <span className="text-xs font-bold block" style={{ color: '#ff990a' }}>
+                                                                        {formatTime(ackSuccessTime)}
                                                                     </span>
-                                                                    {showNotAckSymbol && (
-                                                                        <span title="Not Acknowledged" className="text-red-500 font-bold cursor-default text-[14px]">!</span>
-                                                                    )}
-                                                                </div>
+                                                                ) : (
+                                                                    showNotAckSymbol && (
+                                                                        <span title="Not Acknowledged" className="text-red-500 font-bold cursor-default text-[14px] leading-none">
+                                                                            !
+                                                                        </span>
+                                                                    )
+                                                                )}
                                                                 {isPastDate || hideTimer ? (
                                                                     null
                                                                 ) : (
@@ -807,14 +855,18 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                     <div className="flex flex-col items-center">
                                                         {doneTime ? (
                                                             <>
-                                                                <div className="flex items-center justify-center gap-1">
-                                                                    <span className="text-xs text-blue-600 font-bold whitespace-nowrap block">
-                                                                        {formatTime(row.departmentInitiatedTimes?.[dept] ?? null)}
+                                                                <span className="text-xs text-blue-600 font-bold whitespace-nowrap block">
+                                                                    {formatTime(getDisplayInitiatedTime(row, dept, deptIndex) ?? null)}
+                                                                </span>
+                                                                {ackSuccessTime ? (
+                                                                    <span className="text-xs font-bold whitespace-nowrap block" style={{ color: '#ff990a' }}>
+                                                                        {formatTime(ackSuccessTime)}
                                                                     </span>
-                                                                    {showNotAckSymbol && (
-                                                                        <span title="Not Acknowledged" className="text-red-500 font-bold cursor-default text-[14px]">!</span>
-                                                                    )}
-                                                                </div>
+                                                                ) : (
+                                                                    showNotAckSymbol && (
+                                                                        <span title="Not Acknowledged" className="text-red-500 font-bold cursor-default text-[14px] leading-none mb-1">!</span>
+                                                                    )
+                                                                )}
                                                                 <span className="text-xs text-purple-600 font-bold whitespace-nowrap block">
                                                                     {formatTime(doneTime ?? null)}
                                                                 </span>
