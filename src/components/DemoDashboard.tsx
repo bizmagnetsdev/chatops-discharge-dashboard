@@ -40,7 +40,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({ data }) => {
         <div className="min-h-screen p-4 max-w-[1920px] mx-auto">
             <header className="mb-4 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-200 pb-4">
                 <div>
-                    <h1 className="text-3xl font-black tracking-tight text-slate-900 mb-1">
+                    <h1 className="text-[1.65rem] font-black tracking-tight text-slate-900 mb-1">
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-cyan-600">
                             Real-Time Hospital Discharge Coordination  {/* Hardcoded Demo Title */}
                         </span>— Reference View
@@ -59,7 +59,7 @@ const DemoDashboard: React.FC<DemoDashboardProps> = ({ data }) => {
                         className="hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg transition-colors flex items-center justify-center"
                     >
                         <img
-                            src="/Logo_H_512.png"
+                            src="/Logo_Chaops_Health.png"
                             alt="ChatOps Home"
                             className="h-8 w-auto object-contain"
                         />
