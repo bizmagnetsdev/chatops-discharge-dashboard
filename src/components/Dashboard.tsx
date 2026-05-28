@@ -138,6 +138,17 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
 
     const workflow = data.workflows[0];
 
+    // Determine if the viewed date is today (live) or a past date
+    const isViewingToday = (() => {
+        try {
+            const today = format(new Date(), 'yyyy-MM-dd');
+            const viewed = data.date || workflow.reportDate || '';
+            return viewed.startsWith(today);
+        } catch {
+            return true;
+        }
+    })();
+
     return (
         <div className="min-h-screen p-4 max-w-[1920px] mx-auto"> {/* Reduced base padding */}
             <header className="mb-4 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-200 pb-4">
@@ -174,10 +185,26 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                         </button>
                     </div>
 
-                    <div className="glass-panel px-4 py-2 rounded-lg flex items-center bg-white/50 border border-slate-200">
-                        <span className="text-xs text-slate-500 mr-2">LIVE MONITORING</span>
-                        <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                    </div>
+                    {isViewingToday ? (
+                        // Live badge — blinking dot, not clickable
+                        <div className="glass-panel px-4 py-2 rounded-lg flex items-center bg-white/50 border border-slate-200">
+                            <span className="text-xs text-slate-500 mr-2">LIVE MONITORING</span>
+                            <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        </div>
+                    ) : (
+                        // Past date — clickable button to go back to live
+                        <button
+                            onClick={() => router.push(pathname)}
+                            className="glass-panel px-4 py-2 rounded-lg flex items-center gap-2 bg-white/50 border border-slate-200 hover:bg-emerald-50 hover:border-emerald-300 transition-all active:scale-95 cursor-pointer"
+                            title="Go to Live Monitoring"
+                        >
+                            <span className="text-xs font-bold text-emerald-600">LIVE MONITORING</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </button>
+                    )}
 
                     <button
                         onClick={() => router.push('/discharge-tat-range')}
