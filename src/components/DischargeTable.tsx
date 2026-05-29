@@ -193,21 +193,32 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
 
     /**
      * Returns the display-safe initiated time for a department.
-     * If the actual initiated time is before the previous department's completion
-     * time (due to async/event timing mismatches), we clamp it to the previous
-     * dept's completion time so the UI doesn't show a confusing "before" timestamp.
+     * If the actual initiated time is before the previous SEQUENTIAL department's
+     * completion time (due to async/event timing mismatches), we clamp it to that
+     * completion time so the UI doesn't show a confusing "before" timestamp.
+     *
+     * Parallel departments (listed in workflow.excludedParallelDepts) are exempt:
+     *   - They are never clamped themselves (they start concurrently).
+     *   - They are never used as a sequential predecessor when clamping others.
+     *
      * This is purely a display adjustment — the raw data is not modified.
      */
     const getDisplayInitiatedTime = (row: any, dept: string, deptIndex: number): string | null | undefined => {
         const rawTime = row.departmentInitiatedTimes?.[dept];
         if (!rawTime) return rawTime;
 
-        // Walk backwards through configured departments to find the most recent
-        // non-skipped dept that has a completion time.
+        // Parallel depts run concurrently — no clamping applies to them at all.
+        const parallelDepts = (workflow.excludedParallelDepts || []).map((d: string) => d.toLowerCase());
+        if (parallelDepts.includes(dept.toLowerCase())) return rawTime;
+
+        // Walk backwards to find the nearest non-skipped, non-parallel predecessor
+        // that has a completion time.
         const skipped = (row.skippedDepartments || []).map((d: string) => d.toLowerCase());
         for (let i = deptIndex - 1; i >= 0; i--) {
             const prevDept = configuredDepartments[i];
             if (skipped.includes(prevDept.toLowerCase())) continue;
+            // Skip parallel depts — they're not sequential predecessors
+            if (parallelDepts.includes(prevDept.toLowerCase())) continue;
             const prevCompletionTime = row.departmentCompletionTimes?.[prevDept];
             if (!prevCompletionTime) continue;
 
@@ -218,7 +229,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                 // Clamp: show prev completion time as the initiated time
                 return prevCompletionTime;
             }
-            break; // Found the relevant previous dept — no need to go further back
+            break; // Found the relevant predecessor — no need to go further back
         }
         return rawTime;
     };
