@@ -20,6 +20,7 @@ interface RangeDashboardProps {
 const RangeDashboard: React.FC<RangeDashboardProps> = ({ data, flowName, fromDate, toDate }) => {
     const router = useRouter();
     const [isDownloading, setIsDownloading] = React.useState(false);
+    const [showDetails, setShowDetails] = React.useState(false);
 
     const handleLogout = () => {
         document.cookie = 'flowName=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
@@ -143,12 +144,30 @@ const RangeDashboard: React.FC<RangeDashboardProps> = ({ data, flowName, fromDat
                                         )}
                                     </button>
                                 </div>
+                                <div className="flex justify-end pr-1 mb-2">
+                                    <div className="flex items-center gap-1.5 bg-white/40 border border-slate-200/50 px-2.5 py-1 rounded-lg shadow-sm">
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Show Details</span>
+                                        <button
+                                            onClick={() => setShowDetails(prev => !prev)}
+                                            className={`relative inline-flex h-4.5 w-8 items-center rounded-full transition-colors focus:outline-none ${
+                                                showDetails ? 'bg-emerald-500' : 'bg-slate-300'
+                                            }`}
+                                            aria-label="Toggle details view"
+                                        >
+                                            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                                                showDetails ? 'translate-x-4' : 'translate-x-0.5'
+                                            }`} />
+                                        </button>
+                                    </div>
+                                </div>
                                 <DischargeTable
                                     workflow={workflow}
                                     filterStatus="all"
                                     hideTimer={true}
                                     showInitiatedDate={true}
                                     showCancel={false}
+                                    showDetails={showDetails}
+                                    onShowDetailsChange={setShowDetails}
                                 />
                             </div>
                         ))}

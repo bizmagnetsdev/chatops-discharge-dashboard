@@ -18,6 +18,8 @@ interface DischargeTableProps {
     hideTimer?: boolean;
     showInitiatedDate?: boolean;
     showCancel?: boolean;
+    showDetails?: boolean;
+    onShowDetailsChange?: (show: boolean) => void;
 }
 
 const DischargeTable: React.FC<DischargeTableProps> = ({ 
@@ -26,7 +28,9 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
     isDemo = false, 
     hideTimer = false, 
     showInitiatedDate = false,
-    showCancel = false 
+    showCancel = false,
+    showDetails: showDetailsProp,
+    onShowDetailsChange
 }) => {
     const [canCancelByRole, setCanCancelByRole] = React.useState(false);
 
@@ -415,7 +419,9 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
     };
 
     // ── Details toggle ──────────────────────────────────────────────
-    const [showDetails, setShowDetails] = React.useState(false);
+    const [localShowDetails, setLocalShowDetails] = React.useState(false);
+    const isDetailsControlled = showDetailsProp !== undefined;
+    const showDetails = isDemo ? false : (isDetailsControlled ? showDetailsProp : localShowDetails);
 
     /** Format a raw phone string for display: show last 10 digits */
     const fmtPhone = (raw: string | undefined | null): string => {
@@ -456,21 +462,23 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
 
     return (
         <div className="glass-panel rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-white/60 flex flex-col h-full max-h-[80vh]">
-            {/* Details toggle bar */}
-            <div className="flex items-center justify-end gap-2 px-4 py-2 border-b border-slate-100 bg-white/40">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Show Details</span>
-                <button
-                    onClick={() => setShowDetails(prev => !prev)}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                        showDetails ? 'bg-emerald-500' : 'bg-slate-300'
-                    }`}
-                    aria-label="Toggle details view"
-                >
-                    <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-                        showDetails ? 'translate-x-4' : 'translate-x-1'
-                    }`} />
-                </button>
-            </div>
+            {/* Details toggle bar - only show if NOT controlled by parent and NOT in demo mode */}
+            {!isDetailsControlled && !isDemo && (
+                <div className="flex items-center justify-end gap-2 px-4 py-2 border-b border-slate-100 bg-white/40">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Show Details</span>
+                    <button
+                        onClick={() => setLocalShowDetails(prev => !prev)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                            localShowDetails ? 'bg-emerald-500' : 'bg-slate-300'
+                        }`}
+                        aria-label="Toggle details view"
+                    >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                            localShowDetails ? 'translate-x-4' : 'translate-x-1'
+                        }`} />
+                    </button>
+                </div>
+            )}
 
             <div ref={tableContainerRef} className="overflow-auto flex-1 relative">
                 {showDetails ? (
@@ -500,7 +508,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                         key={row.ticketId}
                                         className={clsx(
                                             'transition-colors border-b border-slate-100',
-                                            isPending ? 'bg-blue-50 hover:bg-blue-100' : 'bg-emerald-50 hover:bg-emerald-100'
+                                            isPending ? 'bg-blue-50 hover:bg-blue-100' : 'bg-emerald-100 hover:bg-emerald-200'
                                         )}
                                     >
                                         {/* Patient / UHID / Initiator */}
@@ -508,7 +516,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                             <div className="flex flex-col items-center gap-0.5">
                                                 <span className="text-sm font-bold text-slate-900">{row.patientName}</span>
                                                 <span className="text-xs text-slate-400">{row.uhid}</span>
-                                                {row.initiatedBy && (
+                                                {row.initiatedBy && !isDemo && (
                                                     <span className="text-[10px] font-bold text-emerald-700 font-mono">
                                                         ▶ {fmtPhone(row.initiatedBy)}
                                                     </span>
@@ -521,72 +529,79 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                         </td>
                                         {/* Per-dept columns */}
                                         {configuredDepartments.map((dept: string) => {
+                                            const deptIndex = configuredDepartments.indexOf(dept);
+                                            const tatMs = row.sla?.departmentDelays?.[dept] || (deptIndex === 0 ? row.sla?.firstDeptDelay : 'NA') || 'NA';
                                             const isSkipped = row.skippedDepartments
                                                 ?.map((d: string) => d.toLowerCase())
                                                 .includes(dept.toLowerCase());
-                                            if (isSkipped) {
+                                            
+                                            const isNA = isSkipped || tatMs === 'NA';
+                                            const initTime = row.departmentInitiatedTimes?.[dept];
+                                            const isInitiated = !!initTime;
+
+                                            if (isNA) {
                                                 return (
-                                                    <td key={dept} className="p-2 align-top border-r border-slate-100">
-                                                        <span className="text-slate-300 text-xs">—</span>
+                                                    <td key={dept} className="p-2 align-middle border-r border-slate-100 text-center min-w-[160px]">
+                                                        <span className="text-slate-400 font-bold text-xs">NA</span>
                                                     </td>
                                                 );
                                             }
 
-                                            const initTime = row.departmentInitiatedTimes?.[dept];
+                                            if (!isInitiated) {
+                                                return (
+                                                    <td key={dept} className="p-2 align-middle border-r border-slate-100 text-center min-w-[160px]">
+                                                        <span className="text-slate-400 font-bold text-xs">-</span>
+                                                    </td>
+                                                );
+                                            }
+
                                             const ackTime  = row.departmentAckSuccessTimes?.[dept];
                                             const doneTime = row.departmentCompletionTimes?.[dept];
                                             const ackBy    = getDeptAckBy(row, dept);
                                             const doneBy   = getDeptCompletedBy(row, dept);
-                                            const hasAny   = initTime || ackBy || ackTime || doneTime || doneBy;
 
                                             return (
                                                 <td key={dept} className="p-2 align-top border-r border-slate-100 min-w-[160px]">
-                                                    {!hasAny ? (
-                                                        <span className="text-[10px] text-slate-300 italic block text-center">—</span>
-                                                    ) : (
-                                                        <div className="flex flex-col gap-1.5">
-                                                            {/* Init */}
-                                                            {initTime && (
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Init</span>
-                                                                    <span className="text-[11px] font-bold text-blue-600 font-mono whitespace-nowrap">
-                                                                        {formatTime(initTime)}
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                            {/* Ack */}
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Ack</span>
-                                                                {ackTime ? (
-                                                                    <span className="text-[11px] font-bold font-mono whitespace-nowrap" style={{ color: '#ff990a' }}>
-                                                                        {formatTime(ackTime)}
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="text-[10px] text-slate-300 italic">—</span>
-                                                                )}
-                                                            </div>
-                                                            {/* Done */}
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Done</span>
-                                                                {doneTime ? (
-                                                                    <span className="text-[11px] font-bold font-mono text-purple-600 whitespace-nowrap">
-                                                                        {formatTime(doneTime as string)}
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="text-[10px] text-slate-300 italic">Pending</span>
-                                                                )}
-                                                            </div>
-                                                            {/* Done By */}
-                                                            {doneBy && (
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Done By</span>
-                                                                    <span className="text-[11px] font-bold font-mono text-purple-600 whitespace-nowrap">
-                                                                        {fmtPhone(doneBy)}
-                                                                    </span>
-                                                                </div>
+                                                    <div className="flex flex-col gap-1.5">
+                                                        {/* Init */}
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Init</span>
+                                                            <span className="text-[11px] font-bold text-blue-600 font-mono whitespace-nowrap">
+                                                                {formatTime(initTime)}
+                                                            </span>
+                                                        </div>
+                                                        {/* Ack */}
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Ack</span>
+                                                            {ackTime ? (
+                                                                <span className="text-[11px] font-bold font-mono whitespace-nowrap" style={{ color: '#ff990a' }}>
+                                                                    {formatTime(ackTime)}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[10px] text-slate-300 italic">—</span>
                                                             )}
                                                         </div>
-                                                    )}
+                                                        {/* Done */}
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Done</span>
+                                                            {doneTime ? (
+                                                                <span className="text-[11px] font-bold font-mono text-purple-600 whitespace-nowrap">
+                                                                    {formatTime(doneTime as string)}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[10px] text-slate-300 italic">Pending</span>
+                                                            )}
+                                                        </div>
+                                                        {/* Done By */}
+                                                        {doneBy && (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Done By</span>
+                                                                <span className="text-[11px] font-bold font-mono text-purple-600 whitespace-nowrap">
+                                                                    {fmtPhone(doneBy)}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             );
                                         })}
@@ -839,7 +854,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                         <div className="flex flex-col items-center">
                                             <span className="text-sm font-bold">{row.patientName}</span>
                                             <span className="text-xs text-slate-500">{row.uhid}</span>
-                                            {row.initiatedBy && (
+                                            {row.initiatedBy && !isDemo && (
                                                 <span className="text-[10px] text-emerald-700 font-mono mt-0.5">
                                                     Initiator: {fmtPhone(row.initiatedBy)}
                                                 </span>

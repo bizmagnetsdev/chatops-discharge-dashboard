@@ -18,6 +18,7 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
     const pathname = usePathname();
     const [selectedDate, setSelectedDate] = React.useState(data.date || '');
     const [filterStatus, setFilterStatus] = React.useState<'all' | 'delayed' | 'ontime' | 'inprogress'>('all');
+    const [showDetails, setShowDetails] = React.useState(false);
     const [isPending, startTransition] = React.useTransition();
 
     useEffect(() => {
@@ -222,18 +223,30 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                 </div>
             </header >
 
-            <main className="space-y-4"> {/* Add control over vertical spacing */}
-                {/* Summary cards commented out per user request */}
-                {/* <SummaryCards
-                    workflow={workflow}
-                    onFilterChange={setFilterStatus}
-                    currentFilter={filterStatus}
-                /> */}
+            <main className="space-y-3">
+                <div className="flex justify-end pr-1 mb-2">
+                    <div className="flex items-center gap-1.5 bg-white/40 border border-slate-200/50 px-2.5 py-1 rounded-lg shadow-sm">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Show Details</span>
+                        <button
+                            onClick={() => setShowDetails(prev => !prev)}
+                            className={`relative inline-flex h-4.5 w-8 items-center rounded-full transition-colors focus:outline-none ${
+                                showDetails ? 'bg-emerald-500' : 'bg-slate-300'
+                            }`}
+                            aria-label="Toggle details view"
+                        >
+                            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                                showDetails ? 'translate-x-4' : 'translate-x-0.5'
+                            }`} />
+                        </button>
+                    </div>
+                </div>
                 <DischargeTable
                     workflow={workflow}
                     filterStatus={filterStatus}
                     isDemo={isDemo}
                     showCancel={!isDemo}
+                    showDetails={showDetails}
+                    onShowDetailsChange={setShowDetails}
                 />
             </main>
             <OfflineBanner />
