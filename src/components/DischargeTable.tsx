@@ -414,11 +414,189 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
         return `${m}m`;
     };
 
+    // ── Details toggle ──────────────────────────────────────────────
+    const [showDetails, setShowDetails] = React.useState(false);
+
+    /** Format a raw phone string for display: show last 10 digits */
+    const fmtPhone = (raw: string | undefined | null): string => {
+        if (!raw || raw === 'NA' || raw === 'Pending') return '—';
+        const digits = raw.replace(/\D/g, '');
+        return digits.length >= 10 ? digits.slice(-10) : digits;
+    };
+
+    /** Get the dept field prefix from workflow.departmentFields */
+    const getDeptFieldPrefix = (dept: string): string | null => {
+        const fieldMeta = (workflow as any).departmentFields?.[dept];
+        if (!fieldMeta?.name) return null;
+        return (fieldMeta.name as string).replace(/_multiple$/i, '');
+    };
+
+    /** Ack phone for a dept from new departmentAcks field */
+    const getDeptAckBy = (row: any, dept: string): string | null => {
+        const prefix = getDeptFieldPrefix(dept);
+        if (prefix && row.departmentAcks) {
+            const val = row.departmentAcks[`${prefix}_ack_by`];
+            if (val && val !== 'NA') return val;
+        }
+        return null;
+    };
+
+    /** Completed-by phone for a dept from new or old fields */
+    const getDeptCompletedBy = (row: any, dept: string): string | null => {
+        const prefix = getDeptFieldPrefix(dept);
+        if (prefix && row.departmentCompletedBys) {
+            const val = row.departmentCompletedBys[`${prefix}_completed_by`];
+            if (val && val !== 'NA' && val !== 'Pending') return val;
+        }
+        // fallback to old field
+        const old = row.departmentCompletedBy?.[dept];
+        if (old && old !== 'NA' && old !== 'Pending') return old;
+        return null;
+    };
+
     return (
         <div className="glass-panel rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-white/60 flex flex-col h-full max-h-[80vh]">
-            {/* Target TAT Header Removed - Moved to Footer */}
+            {/* Details toggle bar */}
+            <div className="flex items-center justify-end gap-2 px-4 py-2 border-b border-slate-100 bg-white/40">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Show Details</span>
+                <button
+                    onClick={() => setShowDetails(prev => !prev)}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                        showDetails ? 'bg-emerald-500' : 'bg-slate-300'
+                    }`}
+                    aria-label="Toggle details view"
+                >
+                    <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                        showDetails ? 'translate-x-4' : 'translate-x-1'
+                    }`} />
+                </button>
+            </div>
 
             <div ref={tableContainerRef} className="overflow-auto flex-1 relative">
+                {showDetails ? (
+                    /* ── Details Table ────────────────────────────────── */
+                    <table className="w-full text-sm border-separate border-spacing-0">
+                        <thead className="bg-slate-100 text-slate-500 font-semibold shadow-sm z-10">
+                            <tr className="sticky top-0 z-30 bg-slate-100 border-b border-slate-200 text-center text-[10px] uppercase tracking-wider h-12">
+                                <th className="p-2 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[180px] text-center sticky left-0 z-40">
+                                    <div className="flex flex-col items-center">
+                                        <span>Patient Name</span>
+                                        <span className="text-slate-400 font-normal normal-case">(UHID / Initiator)</span>
+                                    </div>
+                                </th>
+                                <th className="p-2 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[100px] text-center">Ward &amp; Bed</th>
+                                {configuredDepartments.map((dept: string) => (
+                                    <th key={dept} className="p-2 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[130px] text-center">
+                                        {dept}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {mergedData.map((row) => {
+                                const isPending = row.sla?.overallDelay === 'Pending';
+                                return (
+                                    <tr
+                                        key={row.ticketId}
+                                        className={clsx(
+                                            'transition-colors border-b border-slate-100',
+                                            isPending ? 'bg-blue-50 hover:bg-blue-100' : 'bg-emerald-50 hover:bg-emerald-100'
+                                        )}
+                                    >
+                                        {/* Patient / UHID / Initiator */}
+                                        <td className="p-3 text-center align-top sticky left-0 bg-inherit border-r border-slate-100">
+                                            <div className="flex flex-col items-center gap-0.5">
+                                                <span className="text-sm font-bold text-slate-900">{row.patientName}</span>
+                                                <span className="text-xs text-slate-400">{row.uhid}</span>
+                                                {row.initiatedBy && (
+                                                    <span className="text-[10px] font-bold text-emerald-700 font-mono">
+                                                        ▶ {fmtPhone(row.initiatedBy)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        {/* Ward & Bed */}
+                                        <td className="p-3 text-center align-top text-slate-600 text-xs font-medium border-r border-slate-100">
+                                            {row.wardBed}
+                                        </td>
+                                        {/* Per-dept columns */}
+                                        {configuredDepartments.map((dept: string) => {
+                                            const isSkipped = row.skippedDepartments
+                                                ?.map((d: string) => d.toLowerCase())
+                                                .includes(dept.toLowerCase());
+                                            if (isSkipped) {
+                                                return (
+                                                    <td key={dept} className="p-2 align-top border-r border-slate-100">
+                                                        <span className="text-slate-300 text-xs">—</span>
+                                                    </td>
+                                                );
+                                            }
+
+                                            const initTime = row.departmentInitiatedTimes?.[dept];
+                                            const ackTime  = row.departmentAckSuccessTimes?.[dept];
+                                            const doneTime = row.departmentCompletionTimes?.[dept];
+                                            const ackBy    = getDeptAckBy(row, dept);
+                                            const doneBy   = getDeptCompletedBy(row, dept);
+                                            const hasAny   = initTime || ackBy || ackTime || doneTime || doneBy;
+
+                                            return (
+                                                <td key={dept} className="p-2 align-top border-r border-slate-100 min-w-[160px]">
+                                                    {!hasAny ? (
+                                                        <span className="text-[10px] text-slate-300 italic block text-center">—</span>
+                                                    ) : (
+                                                        <div className="flex flex-col gap-1.5">
+                                                            {/* Init */}
+                                                            {initTime && (
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Init</span>
+                                                                    <span className="text-[11px] font-bold text-blue-600 font-mono whitespace-nowrap">
+                                                                        {formatTime(initTime)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {/* Ack */}
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Ack</span>
+                                                                {ackTime ? (
+                                                                    <span className="text-[11px] font-bold font-mono whitespace-nowrap" style={{ color: '#ff990a' }}>
+                                                                        {formatTime(ackTime)}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-[10px] text-slate-300 italic">—</span>
+                                                                )}
+                                                            </div>
+                                                            {/* Done */}
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Done</span>
+                                                                {doneTime ? (
+                                                                    <span className="text-[11px] font-bold font-mono text-purple-600 whitespace-nowrap">
+                                                                        {formatTime(doneTime as string)}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-[10px] text-slate-300 italic">Pending</span>
+                                                                )}
+                                                            </div>
+                                                            {/* Done By */}
+                                                            {doneBy && (
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Done By</span>
+                                                                    <span className="text-[11px] font-bold font-mono text-purple-600 whitespace-nowrap">
+                                                                        {fmtPhone(doneBy)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                ) : (
+                /* ── Normal Table (original) ──────────────────────── */
                 <table className="w-full text-sm border-separate border-spacing-0">
                     <thead className="bg-slate-100 text-slate-500 font-semibold shadow-sm z-10">
                         <tr className="sticky top-0 z-30 bg-slate-100 border-b border-slate-200 text-center text-[10px] uppercase tracking-wider h-12">
@@ -661,6 +839,11 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                         <div className="flex flex-col items-center">
                                             <span className="text-sm font-bold">{row.patientName}</span>
                                             <span className="text-xs text-slate-500">{row.uhid}</span>
+                                            {row.initiatedBy && (
+                                                <span className="text-[10px] text-emerald-700 font-mono mt-0.5">
+                                                    Initiator: {fmtPhone(row.initiatedBy)}
+                                                </span>
+                                            )}
                                         </div>
                                     </td>
 
@@ -1105,8 +1288,10 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                         )}
                     </tbody>
                 </table>
+                )} {/* end showDetails ternary */}
             </div >
         </div >
+
     );
 };
 

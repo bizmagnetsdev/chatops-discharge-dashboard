@@ -7,6 +7,7 @@ export interface TimelineItem {
   dischargeStart: string;
   consultantName?: string;
   drugsReturned?: string;
+  initiatedBy?: string;
   // Dynamic structure fields
   firstDeptAck?: string | null;
   firstDeptDone?: string | null;
@@ -15,6 +16,9 @@ export interface TimelineItem {
   departmentInitiatedTimes?: Record<string, string>;
   departmentMoreTimeClicks?: Record<string, string>;
   departmentAckSuccessTimes?: Record<string, string>;
+  departmentAcks?: Record<string, string>;
+  departmentCompletedBys?: Record<string, string>;
+  departmentMultiples?: Record<string, string>;
   targetTotalTat: string;
   actualTotalTat: string;
   configuredDepartments: string[];
