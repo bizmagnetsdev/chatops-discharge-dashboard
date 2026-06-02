@@ -146,7 +146,7 @@ const RangeDashboard: React.FC<RangeDashboardProps> = ({ data, flowName, fromDat
                                 </div>
                                 <div className="flex justify-end pr-1 mb-2">
                                     <div className="flex items-center gap-1.5 bg-white/40 border border-slate-200/50 px-2.5 py-1 rounded-lg shadow-sm">
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Show Details</span>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Show ownership</span>
                                         <button
                                             onClick={() => setShowDetails(prev => !prev)}
                                             className={`relative inline-flex h-4.5 w-8 items-center rounded-full transition-colors focus:outline-none ${

@@ -465,7 +465,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
             {/* Details toggle bar - only show if NOT controlled by parent and NOT in demo mode */}
             {!isDetailsControlled && !isDemo && (
                 <div className="flex items-center justify-end gap-2 px-4 py-2 border-b border-slate-100 bg-white/40">
-                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Show Details</span>
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Show ownership</span>
                     <button
                         onClick={() => setLocalShowDetails(prev => !prev)}
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
