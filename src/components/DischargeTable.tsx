@@ -437,8 +437,11 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
     /** Get the dept field prefix from workflow.departmentFields */
     const getDeptFieldPrefix = (dept: string): string | null => {
         const fieldMeta = (workflow as any).departmentFields?.[dept];
-        if (!fieldMeta?.name) return null;
-        return (fieldMeta.name as string).replace(/_multiple$/i, '');
+        if (fieldMeta?.name) {
+            return (fieldMeta.name as string).replace(/_multiple$/i, '');
+        }
+        // Fallback: programmatically generate prefix from department name (e.g. "IP Billing" -> "ip_billing")
+        return dept.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_');
     };
 
     /** Ack phone for a dept from new departmentAcks field */
@@ -462,6 +465,16 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
         const old = row.departmentCompletedBy?.[dept];
         if (old && old !== 'NA' && old !== 'Pending') return old;
         return null;
+    };
+
+    /** Check if a department is configured as multiple steps (i.e., has an Ack step) */
+    const isMultipleStep = (row: any, dept: string): boolean => {
+        const prefix = getDeptFieldPrefix(dept);
+        if (prefix && row.departmentMultiples) {
+            const val = row.departmentMultiples[`${prefix}_multiple`];
+            return val !== 'no';
+        }
+        return true; // Default to true if not specified
     };
 
     return (
@@ -563,6 +576,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                             const doneTime = row.departmentCompletionTimes?.[dept];
                                             const ackBy    = getDeptAckBy(row, dept);
                                             const doneBy   = getDeptCompletedBy(row, dept);
+                                            const isMultiple = isMultipleStep(row, dept);
 
                                             return (
                                                 <td key={dept} className="p-2 align-top border-r border-slate-100 min-w-[170px]">
@@ -575,18 +589,20 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                             </span>
                                                         </div>
                                                         {/* Ack */}
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className="text-[9px] uppercase tracking-widest text-slate-400 w-20 shrink-0 text-right">Ack</span>
-                                                            {ackTime ? (
-                                                                <span className="text-[11px] font-bold font-mono whitespace-nowrap" style={{ color: '#ff990a' }}>
-                                                                    {formatTime(ackTime)}
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-[10px] text-slate-300 italic">—</span>
-                                                            )}
-                                                        </div>
+                                                        {isMultiple && (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-[9px] uppercase tracking-widest text-slate-400 w-20 shrink-0 text-right">Ack</span>
+                                                                {ackTime ? (
+                                                                    <span className="text-[11px] font-bold font-mono whitespace-nowrap" style={{ color: '#ff990a' }}>
+                                                                        {formatTime(ackTime)}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-[10px] text-slate-300 italic">—</span>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                         {/* Ack By */}
-                                                        {ackBy && (
+                                                        {isMultiple && ackBy && (
                                                             <div className="flex items-center gap-1.5">
                                                                 <span className="text-[9px] uppercase tracking-widest text-slate-400 w-20 shrink-0 text-right">Ack By</span>
                                                                 <span className="text-[11px] font-bold font-mono whitespace-nowrap" style={{ color: '#ff990a' }}>
@@ -1016,7 +1032,8 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
 
                                             const isSkipped = row.skippedDepartments?.map((d: string) => d.toLowerCase()).includes(dept.toLowerCase());
                                             const ackSuccessTime = row.departmentAckSuccessTimes?.[dept];
-                                            const showNotAckSymbol = isInitiated && !isSkipped && !ackSuccessTime && dept.toLowerCase() !== 'cash counter';
+                                            const isMultiple = isMultipleStep(row, dept);
+                                            const showNotAckSymbol = isInitiated && !isSkipped && isMultiple && !ackSuccessTime && dept.toLowerCase() !== 'cash counter';
 
                                                 if (isInitiated && !isCompleted) {
                                                 const startTime = row.departmentInitiatedTimes?.[dept];
