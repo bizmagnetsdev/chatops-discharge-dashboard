@@ -51,6 +51,11 @@ export interface Workflow {
   strictTatInsurance?: string;
   timeline: TimelineItem[];
   sla: SLAItem[];
+  workFlowConfig?: {
+    metaData?: {
+      parallelDept?: string;
+    };
+  };
   pendingCounts: Record<string, number> | null;
 }
 

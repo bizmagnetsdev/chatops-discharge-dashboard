@@ -212,7 +212,11 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
         if (!rawTime) return rawTime;
 
         // Parallel depts run concurrently — no clamping applies to them at all.
-        const parallelDepts = (workflow.excludedParallelDepts || []).map((d: string) => d.toLowerCase());
+        const rawParallel = workflow.excludedParallelDepts || 
+            (workflow.workFlowConfig?.metaData?.parallelDept 
+                ? workflow.workFlowConfig.metaData.parallelDept.split(',').map((s: string) => s.trim()) 
+                : []);
+        const parallelDepts = rawParallel.map((d: string) => d.toLowerCase());
         if (parallelDepts.includes(dept.toLowerCase())) return rawTime;
 
         // Walk backwards to find the nearest non-skipped, non-parallel predecessor
@@ -561,18 +565,18 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                             const doneBy   = getDeptCompletedBy(row, dept);
 
                                             return (
-                                                <td key={dept} className="p-2 align-top border-r border-slate-100 min-w-[160px]">
+                                                <td key={dept} className="p-2 align-top border-r border-slate-100 min-w-[170px]">
                                                     <div className="flex flex-col gap-1.5">
                                                         {/* Init */}
                                                         <div className="flex items-center gap-1.5">
-                                                            <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Init</span>
+                                                            <span className="text-[9px] uppercase tracking-widest text-slate-400 w-20 shrink-0 text-right">Init</span>
                                                             <span className="text-[11px] font-bold text-blue-600 font-mono whitespace-nowrap">
                                                                 {formatTime(initTime)}
                                                             </span>
                                                         </div>
                                                         {/* Ack */}
                                                         <div className="flex items-center gap-1.5">
-                                                            <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Ack</span>
+                                                            <span className="text-[9px] uppercase tracking-widest text-slate-400 w-20 shrink-0 text-right">Ack</span>
                                                             {ackTime ? (
                                                                 <span className="text-[11px] font-bold font-mono whitespace-nowrap" style={{ color: '#ff990a' }}>
                                                                     {formatTime(ackTime)}
@@ -581,9 +585,18 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                                 <span className="text-[10px] text-slate-300 italic">—</span>
                                                             )}
                                                         </div>
+                                                        {/* Ack By */}
+                                                        {ackBy && (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-[9px] uppercase tracking-widest text-slate-400 w-20 shrink-0 text-right">Ack By</span>
+                                                                <span className="text-[11px] font-bold font-mono whitespace-nowrap" style={{ color: '#ff990a' }}>
+                                                                    {fmtPhone(ackBy)}
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                         {/* Done */}
                                                         <div className="flex items-center gap-1.5">
-                                                            <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Done</span>
+                                                            <span className="text-[9px] uppercase tracking-widest text-slate-400 w-20 shrink-0 text-right">Done</span>
                                                             {doneTime ? (
                                                                 <span className="text-[11px] font-bold font-mono text-purple-600 whitespace-nowrap">
                                                                     {formatTime(doneTime as string)}
@@ -595,7 +608,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                         {/* Done By */}
                                                         {doneBy && (
                                                             <div className="flex items-center gap-1.5">
-                                                                <span className="text-[9px] uppercase tracking-widest text-slate-400 w-16 shrink-0 text-right">Done By</span>
+                                                                <span className="text-[9px] uppercase tracking-widest text-slate-400 w-20 shrink-0 text-right">Done By</span>
                                                                 <span className="text-[11px] font-bold font-mono text-purple-600 whitespace-nowrap">
                                                                     {fmtPhone(doneBy)}
                                                                 </span>
