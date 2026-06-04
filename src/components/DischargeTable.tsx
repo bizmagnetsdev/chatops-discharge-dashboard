@@ -589,7 +589,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                             </span>
                                                         </div>
                                                         {/* Ack */}
-                                                        {isMultiple && (
+                                                        {(isMultiple || !!ackTime) && (
                                                             <div className="flex items-center gap-1.5">
                                                                 <span className="text-[9px] uppercase tracking-widest text-slate-400 w-20 shrink-0 text-right">Ack</span>
                                                                 {ackTime ? (
@@ -602,7 +602,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                             </div>
                                                         )}
                                                         {/* Ack By */}
-                                                        {isMultiple && ackBy && (
+                                                        {ackBy && (
                                                             <div className="flex items-center gap-1.5">
                                                                 <span className="text-[9px] uppercase tracking-widest text-slate-400 w-20 shrink-0 text-right">Ack By</span>
                                                                 <span className="text-[11px] font-bold font-mono whitespace-nowrap" style={{ color: '#ff990a' }}>
