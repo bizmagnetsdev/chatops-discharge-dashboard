@@ -1033,7 +1033,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                             const isSkipped = row.skippedDepartments?.map((d: string) => d.toLowerCase()).includes(dept.toLowerCase());
                                             const ackSuccessTime = row.departmentAckSuccessTimes?.[dept];
                                             const isMultiple = isMultipleStep(row, dept);
-                                            const showNotAckSymbol = isInitiated && !isSkipped && isMultiple && !ackSuccessTime && dept.toLowerCase() !== 'cash counter';
+                                            const showNotAckSymbol = isInitiated && !isSkipped && isMultiple && !ackSuccessTime && dept.toLowerCase() !== 'cash counter' && !isDemo;
 
                                                 if (isInitiated && !isCompleted) {
                                                 const startTime = row.departmentInitiatedTimes?.[dept];
