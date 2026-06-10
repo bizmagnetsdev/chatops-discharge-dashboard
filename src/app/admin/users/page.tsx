@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminService, ChatOpsUser, WorkflowConfig, CreateUserPayload } from '@/services/adminService';
 
@@ -189,6 +189,17 @@ export default function AdminUsersPage() {
     // Search
     const [search, setSearch] = useState('');
 
+    // Filters
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
+    const [workflowFilter, setWorkflowFilter] = useState<string>('all');
+
+    const workflowOptions = useMemo(() => {
+        const set = new Set<string>();
+        workflows.forEach(w => { if (w.workflowName) set.add(w.workflowName); });
+        users.forEach(u => { if (u.flowName) set.add(u.flowName); });
+        return Array.from(set).sort();
+    }, [workflows, users]);
+
     const showToast = (msg: string, type: 'success' | 'error') => setToast({ msg, type });
 
     const fetchData = useCallback(async () => {
@@ -251,11 +262,23 @@ export default function AdminUsersPage() {
         router.replace('/admin/users/login');
     };
 
-    const filtered = users.filter(u =>
-        u.userName?.toLowerCase().includes(search.toLowerCase()) ||
-        u.mobileNumber?.includes(search) ||
-        u.flowName?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = users.filter(u => {
+        const matchesSearch = !search ||
+            u.userName?.toLowerCase().includes(search.toLowerCase()) ||
+            u.mobileNumber?.includes(search) ||
+            u.flowName?.toLowerCase().includes(search.toLowerCase());
+
+        const matchesStatus =
+            statusFilter === 'all' ||
+            (statusFilter === 'active' && u.isActive) ||
+            (statusFilter === 'inactive' && !u.isActive);
+
+        const matchesWorkflow =
+            workflowFilter === 'all' ||
+            u.flowName === workflowFilter;
+
+        return matchesSearch && matchesStatus && matchesWorkflow;
+    });
 
     if (!session) return null;
 
@@ -319,6 +342,53 @@ export default function AdminUsersPage() {
                         value={search} onChange={e => setSearch(e.target.value)}
                         style={{ flex: 1, minWidth: '220px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '0.65rem 1rem', color: '#f1f5f9', fontSize: '0.88rem', outline: 'none' }}
                     />
+                    
+                    {/* Workflow Filter Dropdown */}
+                    <select
+                        id="workflowFilter"
+                        value={workflowFilter}
+                        onChange={e => setWorkflowFilter(e.target.value)}
+                        style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '10px',
+                            padding: '0.65rem 1rem',
+                            color: '#f1f5f9',
+                            fontSize: '0.88rem',
+                            outline: 'none',
+                            cursor: 'pointer',
+                            minWidth: '180px',
+                            maxWidth: '220px'
+                        }}
+                    >
+                        <option value="all">📂 All Workflows</option>
+                        {workflowOptions.map(flow => (
+                            <option key={flow} value={flow}>{flow}</option>
+                        ))}
+                    </select>
+
+                    {/* Status Filter Dropdown */}
+                    <select
+                        id="statusFilter"
+                        value={statusFilter}
+                        onChange={e => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
+                        style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '10px',
+                            padding: '0.65rem 1rem',
+                            color: '#f1f5f9',
+                            fontSize: '0.88rem',
+                            outline: 'none',
+                            cursor: 'pointer',
+                            minWidth: '150px'
+                        }}
+                    >
+                        <option value="active">🟢 Active Users</option>
+                        <option value="inactive">🔴 Inactive Users</option>
+                        <option value="all">👁️ All Statuses</option>
+                    </select>
+
                     <button
                         id="addUserBtn"
                         onClick={() => { setEditTarget(null); setModalMode('add'); }}
