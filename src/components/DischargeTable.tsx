@@ -912,7 +912,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                 <span className="text-xs text-blue-600 font-bold whitespace-nowrap block mt-1">
                                                     {formatTime(row.dischargeStart)}
                                                 </span>
-                                                {isPastDate || hideTimer ? (
+                                                {isPastDate || hideTimer || !row.dischargeStart ? (
                                                     null
                                                 ) : (
                                                     <div className="h-6 flex items-center justify-center w-full">

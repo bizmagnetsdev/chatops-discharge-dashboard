@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { differenceInSeconds, parseISO } from 'date-fns';
 
 interface LiveTimerProps {
-    startTime: string; // ISO string
+    startTime: string | null | undefined; // ISO string
     slaDuration: number; // in Minutes
     isExtended?: boolean; // If true, adds 30 mins
     warningMin?: number; // Minutes before SLA to show warning (Yellow)
@@ -17,6 +17,7 @@ const LiveTimer: React.FC<LiveTimerProps> = ({ startTime, slaDuration, isExtende
     const [isOverdue, setIsOverdue] = useState<boolean>(false);
 
     useEffect(() => {
+        if (!startTime) return;
         const start = parseISO(startTime);
         // Total allowed duration = SLA + (Extension ? 30 : 0)
         const totalDurationMins = isExtended ? slaDuration + 30 : slaDuration;
@@ -87,6 +88,8 @@ const LiveTimer: React.FC<LiveTimerProps> = ({ startTime, slaDuration, isExtende
             colorClass = 'text-red-600 font-extrabold';
         }
     }
+
+    if (!startTime) return null;
 
     const parts = formatDurationParts(elapsedSeconds);
     const isRed = colorClass.includes('red');
