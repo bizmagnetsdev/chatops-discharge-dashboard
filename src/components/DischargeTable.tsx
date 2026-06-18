@@ -281,6 +281,19 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
         return { ...item, sla: slaItem };
     });
 
+    const departmentColumns = React.useMemo(() => {
+        const items: { type: string; name?: string }[] = configuredDepartments.map(d => ({ type: 'dept', name: d }));
+        const idx = configuredDepartments.findIndex(
+            (d) => d.toLowerCase() === 'pharmacy' || d.toLowerCase() === 'medical store'
+        );
+        if (idx >= 0) {
+            items.splice(idx, 0, { type: 'drugs' });
+        } else {
+            items.unshift({ type: 'drugs' });
+        }
+        return items;
+    }, [configuredDepartments]);
+
     const showConsultant = rawMergedData.some(row => row.consultantName && row.consultantName !== 'N/A' && row.consultantName !== 'NA' && row.consultantName.trim() !== '');
 
     // Let's use `multi_replace_file_content` to be surgical.
@@ -682,58 +695,64 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                 </div>
                             </th>
 
-                            <th
-                                className="p-1 bg-slate-100 border-b border-slate-200 min-w-[100px] text-center align-middle cursor-pointer hover:bg-slate-200 transition-colors select-none"
-                                onClick={() => handleSort('Drugs Returned')}
-                            >
-                                <div className="flex items-center justify-center h-full gap-1">
-                                    <span>Drugs Returned</span>
-                                    {sortConfig.key === 'Drugs Returned' && <span className="text-[10px] text-slate-500">▼</span>}
-                                    {(() => {
-                                        const stats = getDeptStats('Drugs Returned');
-                                        // if (stats.pending > 0) return <span className="text-yellow-600 font-bold ml-1">-{stats.pending}</span>;
-                                        return null;
-                                    })()}
-                                </div>
-                            </th>
-
-                            {configuredDepartments.map((dept) => {
-                                const stats = getDeptStats(dept);
-                                const isNurse = dept.toLowerCase() === 'nurse' || dept.toLowerCase() === 'room status';
-                                const isInsurance = dept.toUpperCase() === 'INSURANCE';
-                                const headerText = isNurse ? (isDemo ? 'Room Status' : 'Room Status') : (isInsurance ? (isDemo ? 'INSURANCE' : 'INSURANCE/TPA') : (isDemo && dept === 'Billing' ? 'Billing + Summary' : dept));
-                                return (
-                                    <th key={dept}
-                                        className={clsx(
-                                            "bg-slate-100 border-b border-slate-200 text-center align-middle cursor-pointer hover:bg-slate-200 transition-colors select-none",
-                                            "p-1 min-w-[110px]",
-                                            !isNurse && "truncate"
-                                        )}
-                                        onClick={() => handleSort(dept)}
-                                    >
-                                        <div className="flex items-center justify-center h-full w-full">
-                                            {isNurse ? (
-                                                <div className="relative group cursor-default flex items-center justify-center w-full px-1">
-                                                    <span className="whitespace-normal break-words leading-tight">
-                                                        Room Status
-                                                    </span>
-                                                    {/* {stats.pending > 0 && <span className="text-yellow-600 font-bold ml-1 whitespace-nowrap">-{stats.pending}</span>} */}
-
-                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-slate-800 text-white text-xs rounded shadow-lg hidden group-hover:block z-50 whitespace-nowrap font-normal normal-case tracking-normal">
-                                                        Room Vacated Status
-                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-800"></div>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center justify-center w-full px-1 gap-1">
-                                                    <span className="whitespace-normal break-words">{headerText}</span>
-                                                    {sortConfig.key === dept && <span className="text-[10px] text-slate-500">▼</span>}
-                                                    {/* {stats.pending > 0 && <span className="text-yellow-600 font-bold ml-1 whitespace-nowrap">-{stats.pending}</span>} */}
-                                                </div>
+                            {departmentColumns.map((col) => {
+                                if (col.type === 'drugs') {
+                                    return (
+                                        <th
+                                            key="drugs-returned-header"
+                                            className="p-1 bg-slate-100 border-b border-slate-200 min-w-[100px] text-center align-middle cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                                            onClick={() => handleSort('Drugs Returned')}
+                                        >
+                                            <div className="flex items-center justify-center h-full gap-1">
+                                                <span>Drugs Returned</span>
+                                                {sortConfig.key === 'Drugs Returned' && <span className="text-[10px] text-slate-500">▼</span>}
+                                                {(() => {
+                                                    const stats = getDeptStats('Drugs Returned');
+                                                    // if (stats.pending > 0) return <span className="text-yellow-600 font-bold ml-1">-{stats.pending}</span>;
+                                                    return null;
+                                                })()}
+                                            </div>
+                                        </th>
+                                    );
+                                } else {
+                                    const dept = col.name!;
+                                    const stats = getDeptStats(dept);
+                                    const isNurse = dept.toLowerCase() === 'nurse' || dept.toLowerCase() === 'room status';
+                                    const isInsurance = dept.toUpperCase() === 'INSURANCE';
+                                    const headerText = isNurse ? (isDemo ? 'Room Status' : 'Room Status') : (isInsurance ? (isDemo ? 'INSURANCE' : 'INSURANCE/TPA') : (isDemo && dept === 'Billing' ? 'Billing + Summary' : dept));
+                                    return (
+                                        <th key={dept}
+                                            className={clsx(
+                                                "bg-slate-100 border-b border-slate-200 text-center align-middle cursor-pointer hover:bg-slate-200 transition-colors select-none",
+                                                "p-1 min-w-[110px]",
+                                                !isNurse && "truncate"
                                             )}
-                                        </div>
-                                    </th>
-                                );
+                                            onClick={() => handleSort(dept)}
+                                        >
+                                            <div className="flex items-center justify-center h-full w-full">
+                                                {isNurse ? (
+                                                    <div className="relative group cursor-default flex items-center justify-center w-full px-1">
+                                                        <span className="whitespace-normal break-words leading-tight">
+                                                            Room Status
+                                                        </span>
+                                                        {/* {stats.pending > 0 && <span className="text-yellow-600 font-bold ml-1 whitespace-nowrap">-{stats.pending}</span>} */}
+
+                                                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-slate-800 text-white text-xs rounded shadow-lg hidden group-hover:block z-50 whitespace-nowrap font-normal normal-case tracking-normal">
+                                                            Room Vacated Status
+                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-800"></div>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                <div className="flex items-center justify-center w-full px-1 gap-1">
+                                                        <span className="whitespace-normal break-words">{headerText}</span>
+                                                        {sortConfig.key === dept && <span className="text-[10px] text-slate-500">▼</span>}
+                                                        {/* {stats.pending > 0 && <span className="text-yellow-600 font-bold ml-1 whitespace-nowrap">-{stats.pending}</span>} */}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </th>
+                                    );
+                                }
                             })}
                             {effectiveShowCancel && isToday && (
                                 <th className="p-1 bg-slate-100 border-b border-slate-200 whitespace-nowrap min-w-[80px] text-center align-middle">
@@ -769,49 +788,54 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                     <span className="text-slate-400 font-mono text-[10px]">-</span>
                                 )}
                             </td>
-                            {/* Drugs Returned Pending */}
-                            <td
-                                className={`p-1 text-center cursor-pointer hover:bg-slate-100 transition-colors ${pendingSortDept === 'Drugs Returned' ? 'bg-yellow-50' : ''}`}
-                                onClick={() => handlePendingSort('Drugs Returned')}
-                                title="Click to sort by pending items"
-                            >
-                                {(() => {
-                                    const pendingCount = getDeptStats('Drugs Returned').pending;
-                                    return pendingCount > 0 ? (
-                                        <span className={clsx(
-                                            "font-mono text-xs",
-                                            pendingSortDept === 'Drugs Returned' ? "text-slate-900 font-bold underline decoration-yellow-500 underline-offset-4" : "text-yellow-600"
-                                        )}>
-                                            {pendingCount}
-                                        </span>
-                                    ) : (
-                                        <span className="text-slate-400 font-mono text-[10px]">-</span>
+                            {/* Drugs & Department Pendings */}
+                            {departmentColumns.map((col) => {
+                                if (col.type === 'drugs') {
+                                    return (
+                                        <td
+                                            key="drugs-returned-pending"
+                                            className={`p-1 text-center cursor-pointer hover:bg-slate-100 transition-colors ${pendingSortDept === 'Drugs Returned' ? 'bg-yellow-50' : ''}`}
+                                            onClick={() => handlePendingSort('Drugs Returned')}
+                                            title="Click to sort by pending items"
+                                        >
+                                            {(() => {
+                                                const pendingCount = getDeptStats('Drugs Returned').pending;
+                                                return pendingCount > 0 ? (
+                                                    <span className={clsx(
+                                                        "font-mono text-xs",
+                                                        pendingSortDept === 'Drugs Returned' ? "text-slate-900 font-bold underline decoration-yellow-500 underline-offset-4" : "text-yellow-600"
+                                                    )}>
+                                                        {pendingCount}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-400 font-mono text-[10px]">-</span>
+                                                );
+                                            })()}
+                                        </td>
                                     );
-                                })()}
-                            </td>
-
-                            {/* Department Pendings */}
-                            {configuredDepartments.map((dept) => {
-                                const count = getDeptStats(dept).pending;
-                                return (
-                                    <td
-                                        key={dept}
-                                        className={`p-1 text-center cursor-pointer hover:bg-slate-100 transition-colors ${pendingSortDept === dept ? 'bg-yellow-50' : ''}`}
-                                        onClick={() => handlePendingSort(dept)}
-                                        title="Click to sort by pending items"
-                                    >
-                                        {count > 0 ? (
-                                            <span className={clsx(
-                                                "font-mono text-xs",
-                                                pendingSortDept === dept ? "text-slate-900 font-bold underline decoration-yellow-500 underline-offset-4" : "text-yellow-600"
-                                            )}>
-                                                {count}
-                                            </span>
-                                        ) : (
-                                            <span className="text-slate-400 font-mono text-[10px]">-</span>
-                                        )}
-                                    </td>
-                                );
+                                } else {
+                                    const dept = col.name!;
+                                    const count = getDeptStats(dept).pending;
+                                    return (
+                                        <td
+                                            key={dept}
+                                            className={`p-1 text-center cursor-pointer hover:bg-slate-100 transition-colors ${pendingSortDept === dept ? 'bg-yellow-50' : ''}`}
+                                            onClick={() => handlePendingSort(dept)}
+                                            title="Click to sort by pending items"
+                                        >
+                                            {count > 0 ? (
+                                                <span className={clsx(
+                                                    "font-mono text-xs",
+                                                    pendingSortDept === dept ? "text-slate-900 font-bold underline decoration-yellow-500 underline-offset-4" : "text-yellow-600"
+                                                )}>
+                                                    {count}
+                                                </span>
+                                            ) : (
+                                                <span className="text-slate-400 font-mono text-[10px]">-</span>
+                                            )}
+                                        </td>
+                                    );
+                                }
                             })}
                             {effectiveShowCancel && isToday && <td className="p-1 text-center bg-slate-50 border-b border-slate-200"></td>}
                         </tr>
@@ -828,25 +852,31 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                         </div>
                                     </div>
                                 </td>
-                                <td className="p-1 text-center align-middle font-bold text-slate-900 text-xs">15m</td>
-                                {configuredDepartments.map((dept) => {
-                                    const slaMins = workflow.departmentSlaConfig?.[dept] || 0;
-                                    // Handle "-" for Cash Counter if SLA is 0
-                                    if (slaMins === 0) return (
-                                        <td key={`${dept}-target`} className="p-1 text-center align-middle font-bold text-slate-900 text-xs">
-                                            -
-                                        </td>
-                                    );
+                                {departmentColumns.map((col) => {
+                                    if (col.type === 'drugs') {
+                                        return (
+                                            <td key="drugs-returned-target" className="p-1 text-center align-middle font-bold text-slate-900 text-xs">15m</td>
+                                        );
+                                    } else {
+                                        const dept = col.name!;
+                                        const slaMins = workflow.departmentSlaConfig?.[dept] || 0;
+                                        // Handle "-" for Cash Counter if SLA is 0
+                                        if (slaMins === 0) return (
+                                            <td key={`${dept}-target`} className="p-1 text-center align-middle font-bold text-slate-900 text-xs">
+                                                -
+                                            </td>
+                                        );
 
-                                    const h = Math.floor(slaMins / 60);
-                                    const m = slaMins % 60;
-                                    const formatted = h > 0 ? `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m` : `${m}m`;
+                                        const h = Math.floor(slaMins / 60);
+                                        const m = slaMins % 60;
+                                        const formatted = h > 0 ? `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m` : `${m}m`;
 
-                                    return (
-                                        <td key={`${dept}-target`} className="p-1 text-center align-middle font-bold text-slate-900 text-xs">
-                                            {formatted}
-                                        </td>
-                                    );
+                                        return (
+                                            <td key={`${dept}-target`} className="p-1 text-center align-middle font-bold text-slate-900 text-xs">
+                                                {formatted}
+                                            </td>
+                                        );
+                                    }
                                 })}
                                 {effectiveShowCancel && isToday && <td className="p-1 text-center bg-slate-50 border-b border-slate-200"></td>}
                             </tr>
@@ -957,68 +987,69 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                         )}
                                     </td>
 
-                                    {/* Drugs Returned Column */}
-                                    <td className="p-2 text-center align-top">
-                                        {(() => {
+                                    {departmentColumns.map((col) => {
+                                        if (col.type === 'drugs') {
                                             const isInitiated = !!drugsInitTime;
                                             const isCompleted = !!drugsAckTime;
                                             const drugsStatus = row.drugsReturned?.toLowerCase() || 'n/a';
 
                                             if (drugsStatus === 'no') {
-                                                return <span className="text-slate-400 font-mono">-</span>;
+                                                return <td key={`drugs-returned-${row.ticketId}`} className="p-2 text-center align-top"><span className="text-slate-400 font-mono">-</span></td>;
                                             }
 
                                             if (drugsStatus === 'yes' && isInitiated && !isCompleted) {
                                                 return (
-                                                    <div className="flex flex-col items-center">
-                                                        <span className="text-xs font-bold text-blue-600 block">
-                                                            {formatTime(displayDrugsInitTime ?? null)}
-                                                        </span>
-                                                        {isPastDate || hideTimer ? null : (
-                                                            <div className="h-6 flex items-center justify-center w-full">
-                                                                <LiveTimer
-                                                                    startTime={drugsInitTime!}
-                                                                    slaDuration={15}
-                                                                    warningMin={5}
-                                                                    isExtended={false}
-                                                                    showGif={showGif}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    <td key={`drugs-returned-${row.ticketId}`} className="p-2 text-center align-top">
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="text-xs font-bold text-blue-600 block">
+                                                                {formatTime(displayDrugsInitTime ?? null)}
+                                                            </span>
+                                                            {isPastDate || hideTimer ? null : (
+                                                                <div className="h-6 flex items-center justify-center w-full">
+                                                                    <LiveTimer
+                                                                        startTime={drugsInitTime!}
+                                                                        slaDuration={15}
+                                                                        warningMin={5}
+                                                                        isExtended={false}
+                                                                        showGif={showGif}
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
                                                 );
                                             }
 
                                             if (isCompleted) {
                                                 return (
-                                                    <div className="flex flex-col items-center">
-                                                        <span className="text-xs text-blue-600 font-bold whitespace-nowrap block">
-                                                            {formatTime(displayDrugsInitTime ?? null)}
-                                                        </span>
-                                                        <span className="text-xs text-purple-600 font-bold block">
-                                                            {formatTime(drugsAckTime ?? null)}
-                                                        </span>
-                                                        <span className={clsx(billStatusColor, "text-xs font-bold",
-                                                            !billStatusColor.includes('red') && billDelay !== 'Pending' && "text-slate-600"
-                                                        )}>
-                                                            {formatDelayString(billDelay)}
-                                                        </span>
-                                                    </div>
+                                                    <td key={`drugs-returned-${row.ticketId}`} className="p-2 text-center align-top">
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="text-xs text-blue-600 font-bold whitespace-nowrap block">
+                                                                {formatTime(displayDrugsInitTime ?? null)}
+                                                            </span>
+                                                            <span className="text-xs text-purple-600 font-bold block">
+                                                                {formatTime(drugsAckTime ?? null)}
+                                                            </span>
+                                                            <span className={clsx(billStatusColor, "text-xs font-bold",
+                                                                !billStatusColor.includes('red') && billDelay !== 'Pending' && "text-slate-600"
+                                                            )}>
+                                                                {formatDelayString(billDelay)}
+                                                            </span>
+                                                        </div>
+                                                    </td>
                                                 );
                                             }
 
                                             if (drugsStatus === 'n/a') {
-                                                return null;
+                                                return <td key={`drugs-returned-${row.ticketId}`} className="p-2 text-center align-top"></td>;
                                             }
 
-                                            return <span className="text-slate-400 font-mono">-</span>;
-                                        })()}
-                                    </td>
-
-                                    {
-                                        configuredDepartments.map((dept, deptIndex) => {
+                                            return <td key={`drugs-returned-${row.ticketId}`} className="p-2 text-center align-top"><span className="text-slate-400 font-mono">-</span></td>;
+                                        } else {
+                                            const dept = col.name!;
+                                            const deptIndex = configuredDepartments.indexOf(dept);
                                             let tatMs = 'NA';
-                                            let doneTime: string | null | undefined = null;
+                                            let doneTime = null;
 
                                             tatMs = row.sla?.departmentDelays?.[dept] || (deptIndex === 0 ? row.sla?.firstDeptDelay : 'NA') || 'NA';
                                             doneTime = row.departmentCompletionTimes?.[dept];
@@ -1030,12 +1061,12 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
 
                                             const isCompleted = !!doneTime;
 
-                                            const isSkipped = row.skippedDepartments?.map((d: string) => d.toLowerCase()).includes(dept.toLowerCase());
+                                            const isSkipped = row.skippedDepartments?.map((d) => d.toLowerCase()).includes(dept.toLowerCase());
                                             const ackSuccessTime = row.departmentAckSuccessTimes?.[dept];
                                             const isMultiple = isMultipleStep(row, dept);
                                             const showNotAckSymbol = isInitiated && !isSkipped && isMultiple && !ackSuccessTime && dept.toLowerCase() !== 'cash counter' && !isDemo;
 
-                                                if (isInitiated && !isCompleted) {
+                                            if (isInitiated && !isCompleted) {
                                                 const startTime = row.departmentInitiatedTimes?.[dept];
                                                 // Display-safe initiated time: clamped to prev dept completion if needed
                                                 const displayStartTime = getDisplayInitiatedTime(row, dept, deptIndex);
@@ -1121,8 +1152,8 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                     </div>
                                                 </td>
                                             );
-                                        })
-                                    }
+                                        }
+                                    })}
                                 {effectiveShowCancel && isToday && (
                                     <td className="p-2 align-middle text-center">
                                         <button
@@ -1153,31 +1184,33 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                     <span className="text-slate-400 font-mono">-</span>
                                 )}
                             </td>
-                            {/* Drugs Returned Pending */}
-                            <td className="p-2 text-center">
-                                {(() => {
+                            {departmentColumns.map((col) => {
+                                if (col.type === 'drugs') {
                                     const pendingCount = getDeptStats('Drugs Returned').pending;
-                                    return pendingCount > 0 ? (
-                                        <span className="text-yellow-600 font-mono text-sm">{pendingCount}</span>
-                                    ) : (
-                                        <span className="text-slate-400 font-mono">-</span>
+                                    return (
+                                        <td key="drugs-returned-pending-footer" className="p-2 text-center">
+                                            {pendingCount > 0 ? (
+                                                <span className="text-yellow-600 font-mono text-sm">{pendingCount}</span>
+                                            ) : (
+                                                <span className="text-slate-400 font-mono">-</span>
+                                            )}
+                                        </td>
                                     );
-                                })()}
-                            </td>
-                            {/* Department Pendings */}
-                            {configuredDepartments.map((dept) => {
-                                const count = getDeptStats(dept).pending;
-                                return (
-                                    <td key={dept} className="p-2 text-center">
-                                        {count > 0 ? (
-                                            <span className="text-yellow-600 font-mono text-sm">
-                                                {count}
-                                            </span>
-                                        ) : (
-                                            <span className="text-slate-400 font-mono">-</span>
-                                        )}
-                                    </td>
-                                );
+                                } else {
+                                    const dept = col.name!;
+                                    const count = getDeptStats(dept).pending;
+                                    return (
+                                        <td key={dept} className="p-2 text-center">
+                                            {count > 0 ? (
+                                                <span className="text-yellow-600 font-mono text-sm">
+                                                    {count}
+                                                </span>
+                                            ) : (
+                                                <span className="text-slate-400 font-mono">-</span>
+                                            )}
+                                        </td>
+                                    );
+                                }
                             })}
                             {effectiveShowCancel && isToday && <td className="p-2 text-center bg-slate-50 border-t-2 border-slate-200"></td>}
                         </tr>
@@ -1197,29 +1230,33 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                     <span className="text-slate-400 font-mono">-</span>
                                 )}
                             </td>
-                            <td className="p-2 text-center">
-                                {(() => {
+                            {departmentColumns.map((col) => {
+                                if (col.type === 'drugs') {
                                     const completedCount = getDeptStats('Drugs Returned').completed;
-                                    return completedCount > 0 ? (
-                                        <span className="text-emerald-600 font-mono text-sm">{completedCount}</span>
-                                    ) : (
-                                        <span className="text-slate-400 font-mono">-</span>
+                                    return (
+                                        <td key="drugs-returned-completed-footer" className="p-2 text-center">
+                                            {completedCount > 0 ? (
+                                                <span className="text-emerald-600 font-mono text-sm">{completedCount}</span>
+                                            ) : (
+                                                <span className="text-slate-400 font-mono">-</span>
+                                            )}
+                                        </td>
                                     );
-                                })()}
-                            </td>
-                            {configuredDepartments.map((dept) => {
-                                const count = getDeptStats(dept).completed;
-                                return (
-                                    <td key={dept} className="p-2 text-center">
-                                        {count > 0 ? (
-                                            <span className="text-emerald-600 font-mono text-sm">
-                                                {count}
-                                            </span>
-                                        ) : (
-                                            <span className="text-slate-400 font-mono">-</span>
-                                        )}
-                                    </td>
-                                );
+                                } else {
+                                    const dept = col.name!;
+                                    const count = getDeptStats(dept).completed;
+                                    return (
+                                        <td key={dept} className="p-2 text-center">
+                                            {count > 0 ? (
+                                                <span className="text-emerald-600 font-mono text-sm">
+                                                    {count}
+                                                </span>
+                                            ) : (
+                                                <span className="text-slate-400 font-mono">-</span>
+                                            )}
+                                        </td>
+                                    );
+                                }
                             })}
                             {effectiveShowCancel && isToday && <td className="p-2 text-center bg-slate-50 border-t border-slate-200"></td>}
                         </tr>
@@ -1246,8 +1283,8 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                     );
                                 })()}
                             </td>
-                            <td className="p-2 text-center">
-                                {(() => {
+                            {departmentColumns.map((col) => {
+                                if (col.type === 'drugs') {
                                     const totalBillDelay = mergedData.reduce((acc, row) => {
                                         const drugsInitTime = row.departmentInitiatedTimes?.['Pharmacy'] || row.departmentInitiatedTimes?.['Medical Store'];
                                         const drugsAckTime = row.departmentAckSuccessTimes?.['Pharmacy'] || row.departmentAckSuccessTimes?.['Medical Store'];
@@ -1256,40 +1293,45 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                         const parsed = parseDelayMinutes(delayStr);
                                         return acc + (parsed > 0 ? parsed : 0);
                                     }, 0);
-                                    return totalBillDelay > 0 ? (
-                                        <span className="!text-red-600 font-mono text-sm font-bold">
-                                            {formatDelayString(`${totalBillDelay} mins`)}
-                                        </span>
-                                    ) : (
-                                        <span className="text-slate-400 font-mono">-</span>
+                                    return (
+                                        <td key="drugs-returned-total-time-footer" className="p-2 text-center">
+                                            {totalBillDelay > 0 ? (
+                                                <span className="!text-red-600 font-mono text-sm font-bold">
+                                                    {formatDelayString(`${totalBillDelay} mins`)}
+                                                </span>
+                                            ) : (
+                                                <span className="text-slate-400 font-mono">-</span>
+                                            )}
+                                        </td>
                                     );
-                                })()}
-                            </td>
-                            {configuredDepartments.map((dept, index) => {
-                                const slaMins = workflow.departmentSlaConfig?.[dept] ?? 0;
-                                const hasSla = slaMins > 0;
-                                if (!hasSla) return <td key={dept} className="p-2 text-center"><span className="text-slate-600 font-mono">-</span></td>;
+                                } else {
+                                    const dept = col.name!;
+                                    const deptIndex = configuredDepartments.indexOf(dept);
+                                    const slaMins = workflow.departmentSlaConfig?.[dept] ?? 0;
+                                    const hasSla = slaMins > 0;
+                                    if (!hasSla) return <td key={dept} className="p-2 text-center"><span className="text-slate-600 font-mono">-</span></td>;
 
-                                const totalDeptMinutes = mergedData.reduce((acc, row) => {
-                                    let delayString = '0';
-                                    delayString = row.sla?.departmentDelays?.[dept] || (index === 0 ? row.sla?.firstDeptDelay : '0') || '0';
+                                    const totalDeptMinutes = mergedData.reduce((acc, row) => {
+                                        let delayString = '0';
+                                        delayString = row.sla?.departmentDelays?.[dept] || (deptIndex === 0 ? row.sla?.firstDeptDelay : '0') || '0';
 
-                                    if (delayString === 'Pending' || delayString === 'NA' || !delayString) return acc;
-                                    const parsed = parseDelayMinutes(delayString);
-                                    return acc + (parsed > 0 ? parsed : 0);
-                                }, 0);
+                                        if (delayString === 'Pending' || delayString === 'NA' || !delayString) return acc;
+                                        const parsed = parseDelayMinutes(delayString);
+                                        return acc + (parsed > 0 ? parsed : 0);
+                                    }, 0);
 
-                                return (
-                                    <td key={dept} className="p-2 text-center">
-                                        {totalDeptMinutes > 0 ? (
-                                            <span className="!text-red-600 font-mono text-sm font-bold">
-                                                {formatDelayString(`${totalDeptMinutes} mins`)}
-                                            </span>
-                                        ) : (
-                                            <span className="text-slate-400 font-mono">-</span>
-                                        )}
-                                    </td>
-                                );
+                                    return (
+                                        <td key={dept} className="p-2 text-center">
+                                            {totalDeptMinutes > 0 ? (
+                                                <span className="!text-red-600 font-mono text-sm font-bold">
+                                                    {formatDelayString(`${totalDeptMinutes} mins`)}
+                                                </span>
+                                            ) : (
+                                                <span className="text-slate-400 font-mono">-</span>
+                                            )}
+                                        </td>
+                                    );
+                                }
                             })}
                             {effectiveShowCancel && isToday && <td className="p-2 text-center bg-slate-100 border-t border-slate-200"></td>}
                         </tr>
@@ -1309,24 +1351,29 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                     </div>
                                 </td>
 
-                                <td className="p-1 text-center text-slate-500 font-mono text-xs font-bold">
-                                    {(() => {
-                                        const h = Math.floor(15 / 60);
-                                        const m = 15 % 60;
-                                        return h > 0 ? `${String(h).padEnd(2, '0')}h${String(m).padEnd(2, '0')}m` : `${m}m`;
-                                    })()}
-                                </td>
-
-                                {configuredDepartments.map((dept) => {
-                                    const slaMins = workflow.departmentSlaConfig?.[dept] ?? 0;
-                                    const h = Math.floor(slaMins / 60);
-                                    const m = slaMins % 60;
-                                    const formatted = h > 0 ? `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m` : `${m}m`;
-                                    return (
-                                        <td key={dept} className="p-1 text-center text-slate-500 font-mono text-xs font-bold">
-                                            {slaMins > 0 ? formatted : '-'}
-                                        </td>
-                                    );
+                                {departmentColumns.map((col) => {
+                                    if (col.type === 'drugs') {
+                                        return (
+                                            <td key="drugs-returned-tat-footer" className="p-1 text-center text-slate-500 font-mono text-xs font-bold">
+                                                {(() => {
+                                                    const h = Math.floor(15 / 60);
+                                                    const m = 15 % 60;
+                                                    return h > 0 ? `${String(h).padEnd(2, '0')}h${String(m).padEnd(2, '0')}m` : `${m}m`;
+                                                })()}
+                                            </td>
+                                        );
+                                    } else {
+                                        const dept = col.name!;
+                                        const slaMins = workflow.departmentSlaConfig?.[dept] ?? 0;
+                                        const h = Math.floor(slaMins / 60);
+                                        const m = slaMins % 60;
+                                        const formatted = h > 0 ? `${String(h).padStart(2, '0')}h${String(m).padStart(2, '0')}m` : `${m}m`;
+                                        return (
+                                            <td key={dept} className="p-1 text-center text-slate-500 font-mono text-xs font-bold">
+                                                {slaMins > 0 ? formatted : '-'}
+                                            </td>
+                                        );
+                                    }
                                 })}
                                 {effectiveShowCancel && isToday && <td className="p-2 text-center bg-slate-100 border-t border-slate-200 sticky bottom-0 z-20"></td>}
                             </tr>
