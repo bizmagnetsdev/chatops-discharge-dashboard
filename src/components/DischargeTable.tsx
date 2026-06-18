@@ -1081,16 +1081,9 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                                     {formatTime(displayStartTime ?? null)}
                                                                 </span>
                                                                 {ackSuccessTime ? (
-                                                                    <>
-                                                                        <span className="text-xs font-bold block" style={{ color: '#ff990a' }}>
-                                                                            {formatTime(ackSuccessTime)}
-                                                                        </span>
-                                                                        {getDeptAckBy(row, dept) && !isDemo && (
-                                                                            <span className="text-[10px] font-bold text-black font-mono block leading-tight mt-0.5">
-                                                                                {fmtPhone(getDeptAckBy(row, dept)!)}
-                                                                            </span>
-                                                                        )}
-                                                                    </>
+                                                                    <span className="text-xs font-bold block" style={{ color: '#ff990a' }}>
+                                                                        {formatTime(ackSuccessTime)}
+                                                                    </span>
                                                                 ) : (
                                                                     showNotAckSymbol && (
                                                                         <span title="Not Acknowledged" className="text-red-500 font-bold cursor-default text-[14px] leading-none">
@@ -1109,6 +1102,11 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                                             showGif={showGif}
                                                                         />
                                                                     </div>
+                                                                )}
+                                                                {ackSuccessTime && getDeptAckBy(row, dept) && !isDemo && (
+                                                                    <span className="text-[10px] font-bold text-black font-mono block leading-tight mt-0.5">
+                                                                        {fmtPhone(getDeptAckBy(row, dept)!)}
+                                                                    </span>
                                                                 )}
                                                             </div>
                                                         </td>
