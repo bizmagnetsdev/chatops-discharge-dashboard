@@ -1103,7 +1103,7 @@ const DischargeTable: React.FC<DischargeTableProps> = ({
                                                                         />
                                                                     </div>
                                                                 )}
-                                                                {ackSuccessTime && getDeptAckBy(row, dept) && !isDemo && (
+                                                                {getDeptAckBy(row, dept) && !isDemo && (
                                                                     <span className="text-[10px] font-bold text-black font-mono block leading-tight mt-0.5">
                                                                         {fmtPhone(getDeptAckBy(row, dept)!)}
                                                                     </span>
