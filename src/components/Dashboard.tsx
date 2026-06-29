@@ -21,6 +21,64 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
     const [showDetails, setShowDetails] = React.useState(false);
     const [isPending, startTransition] = React.useTransition();
 
+    // Admin workflow switcher state
+    const [isAdmin, setIsAdmin] = React.useState(false);
+    const [allWorkflows, setAllWorkflows] = React.useState<string[]>([]);
+    const [selectedFlow, setSelectedFlow] = React.useState(flowName || '');
+
+    // On mount: check if admin, load all workflows for admin
+    useEffect(() => {
+        try {
+            const stored = localStorage.getItem('userDetails');
+            if (stored) {
+                const userDetails = JSON.parse(stored);
+                const levels = (userDetails.accessLevel || '').split(',').map((s: string) => s.trim());
+                if (levels.includes('admin')) {
+                    setIsAdmin(true);
+                    // Fetch all active workflows for the switcher
+                    fetch('/api/admin/workflows')
+                        .then(res => res.json())
+                        .then(wfData => {
+                            if (Array.isArray(wfData)) {
+                                const names: string[] = wfData
+                                    .map((w: any) => w.workflowName || w.flowName || w.name)
+                                    .filter(Boolean);
+                                setAllWorkflows(names);
+
+                                // Restore last selected admin flow from localStorage
+                                const savedFlow = localStorage.getItem('adminSelectedFlow');
+                                if (savedFlow && names.includes(savedFlow) && savedFlow !== flowName) {
+                                    // Silently update cookie to match saved admin flow and refresh
+                                    const exp = new Date();
+                                    exp.setDate(exp.getDate() + 30);
+                                    document.cookie = `flowName=${encodeURIComponent(savedFlow)}; path=/; expires=${exp.toUTCString()}`;
+                                    router.refresh();
+                                } else {
+                                    setSelectedFlow(flowName || '');
+                                }
+                            }
+                        })
+                        .catch(() => {});
+                }
+            }
+        } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const handleFlowSwitch = (newFlow: string) => {
+        if (!newFlow || newFlow === flowName) return;
+        setSelectedFlow(newFlow);
+        localStorage.setItem('adminSelectedFlow', newFlow);
+        // Update the flowName cookie
+        const exp = new Date();
+        exp.setDate(exp.getDate() + 30);
+        document.cookie = `flowName=${encodeURIComponent(newFlow)}; path=/; expires=${exp.toUTCString()}`;
+        // Use startTransition so isPending handles the loading state (auto-resets)
+        startTransition(() => {
+            router.refresh();
+        });
+    };
+
     useEffect(() => {
         setSelectedDate(data.date || '');
     }, [data.date]);
@@ -32,15 +90,13 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                 router.refresh();
             }
         }, 60000);
-
         return () => clearInterval(interval);
     }, [router]);
 
     const handleLogout = () => {
-        // Clear cookies
         document.cookie = 'flowName=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        // Redirect to login
-        router.refresh(); // Refresh to ensure server state is cleared
+        localStorage.removeItem('adminSelectedFlow');
+        router.refresh();
         router.push('/login');
     };
 
@@ -77,17 +133,7 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                     <p className="text-slate-500 mb-6">
                         Please check your internet connection and refresh the page.
                     </p>
-                    {/* <button
-                        onClick={() => router.refresh()}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors shadow-md hover:shadow-lg"
-                    >
-                        Try Again
-                    </button> */}
-                    <div className="mt-4 pt-4 border-t border-slate-100">
-                        {/* <p className="text-xs text-slate-400">
-                            Error Details: {data.message}
-                        </p> */}
-                    </div>
+                    <div className="mt-4 pt-4 border-t border-slate-100"></div>
                 </div>
             </div>
         );
@@ -100,7 +146,6 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                 <div className="glass-panel p-10 rounded-2xl text-center max-w-lg w-full border border-slate-200 shadow-xl bg-white/80">
                     <h2 className="text-3xl font-black text-slate-900 mb-4">No Records Found</h2>
                     <p className="text-slate-500 text-lg mb-6">
-                        {/* {data.message || "No discharge records found for the given date/workflow."} */}
                         Please select another date
                     </p>
                     <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 inline-block w-full">
@@ -125,6 +170,21 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                                 Submit
                             </button>
                         </div>
+                        {/* Admin workflow switcher on no-data screen */}
+                        {isAdmin && allWorkflows.length > 0 && (
+                            <div className="mb-3">
+                                <label className="block text-xs text-slate-500 mb-1 text-left font-bold uppercase tracking-wider">Switch Workflow</label>
+                                <select
+                                    value={selectedFlow}
+                                    onChange={(e) => handleFlowSwitch(e.target.value)}
+                                    className="bg-white border border-emerald-300 text-slate-800 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full px-3 py-2.5 shadow-sm font-medium cursor-pointer"
+                                >
+                                    {allWorkflows.map((wf) => (
+                                        <option key={wf} value={wf}>{wf}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         <button
                             onClick={handleLogout}
                             className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-lg transition-colors text-sm"
@@ -151,10 +211,10 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
     })();
 
     return (
-        <div className="min-h-screen p-4 max-w-[1920px] mx-auto"> {/* Reduced base padding */}
+        <div className="min-h-screen p-4 max-w-[1920px] mx-auto">
             <header className="mb-4 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-200 pb-4">
                 <div>
-                    <h1 className="text-3xl font-black tracking-tight text-slate-900 mb-1"> {/* Slightly smaller font */}
+                    <h1 className="text-3xl font-black tracking-tight text-slate-900 mb-1">
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-cyan-600">
                             {isDemo ? 'Kxxxxxx Hxxxxxl' : (flowName || 'Kongunad Hospital')}
                         </span> Process
@@ -163,7 +223,25 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                         Performance Report • {format(parseISO(workflow.reportDate || data.date || new Date().toISOString()), 'dd-MM-yyyy')}
                     </p>
                 </div>
-                <div className="mt-4 md:mt-0 flex flex-wrap items-center gap-4">
+                <div className="mt-4 md:mt-0 flex flex-wrap items-center gap-4 justify-end md:justify-end">
+
+                    {/* Admin-only Workflow Switcher */}
+                    {isAdmin && allWorkflows.length > 0 && (
+                        <div className="flex items-center gap-2">
+                            {/* <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">Workflow</span> */}
+                            <select
+                                value={selectedFlow}
+                                onChange={(e) => handleFlowSwitch(e.target.value)}
+                                className="bg-white border border-emerald-300 text-slate-800 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block px-3 py-2 shadow-sm font-medium cursor-pointer"
+                                title="Switch workflow (Admin only)"
+                            >
+                                {allWorkflows.map((wf) => (
+                                    <option key={wf} value={wf}>{wf}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
                     {/* Date Picker */}
                     <div className="flex items-center gap-2">
                         <input
@@ -187,13 +265,11 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                     </div>
 
                     {isViewingToday ? (
-                        // Live badge — blinking dot, not clickable
                         <div className="glass-panel px-4 py-2 rounded-lg flex items-center bg-white/50 border border-slate-200">
                             <span className="text-xs text-slate-500 mr-2">LIVE MONITORING</span>
                             <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                         </div>
                     ) : (
-                        // Past date — clickable button to go back to live
                         <button
                             onClick={() => router.push(pathname)}
                             className="glass-panel px-4 py-2 rounded-lg flex items-center gap-2 bg-white/50 border border-slate-200 hover:bg-emerald-50 hover:border-emerald-300 transition-all active:scale-95 cursor-pointer"
@@ -221,7 +297,7 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                         Logout
                     </button>
                 </div>
-            </header >
+            </header>
 
             <main className="space-y-3">
                 <div className="flex justify-end pr-1 mb-2">
@@ -250,7 +326,7 @@ const Dashboard: React.FC<DashboardProps & { isDemo?: boolean }> = ({ data, isDe
                 />
             </main>
             <OfflineBanner />
-        </div >
+        </div>
     );
 };
 
