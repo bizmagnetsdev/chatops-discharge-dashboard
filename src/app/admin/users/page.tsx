@@ -231,8 +231,9 @@ export default function AdminUsersPage() {
     const handleSaveUser = async (payload: CreateUserPayload) => {
         setSaving(true);
         try {
-            await adminService.createOrUpdateUser(payload);
-            showToast(modalMode === 'edit' ? 'User updated successfully!' : 'User added successfully!', 'success');
+            const isNew = modalMode === 'add';
+            await adminService.createOrUpdateUser({ ...payload, isNew });
+            showToast(isNew ? 'User added successfully!' : 'User updated successfully!', 'success');
             setModalMode(null);
             setEditTarget(null);
             await fetchData();

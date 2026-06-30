@@ -34,6 +34,7 @@ export interface CreateUserPayload {
     userName: string;
     flowName: string;
     accessLevel: string | null;
+    isNew?: boolean;
 }
 
 export const ADMIN_SESSION_KEY = 'adminSession';
