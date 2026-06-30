@@ -65,8 +65,9 @@ function UserForm({ initial, workflows, onSave, onClose, saving, isEdit }: UserF
     const [hasCancel, setHasCancel] = useState(
         (initial?.accessLevel || '').split(',').map(s => s.trim()).includes('cancel_discharge')
     );
-
-    const hasAdmin = (initial?.accessLevel || '').split(',').map(s => s.trim()).includes('admin');
+    const [hasAdmin, setHasAdmin] = useState(
+        (initial?.accessLevel || '').split(',').map(s => s.trim()).includes('admin')
+    );
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -121,6 +122,18 @@ function UserForm({ initial, workflows, onSave, onClose, saving, isEdit }: UserF
                     style={{ width: '18px', height: '18px', accentColor: '#6366f1', cursor: 'pointer' }} />
                 <label htmlFor="cancelDischarge" style={{ color: '#c7d2fe', fontSize: '0.9rem', fontWeight: 500, cursor: 'pointer' }}>
                     Grant <strong>cancel_discharge</strong> permission
+                </label>
+            </div>
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: '0.75rem',
+                background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
+                borderRadius: '10px', padding: '0.9rem 1rem'
+            }}>
+                <input id="adminPermission" type="checkbox" checked={hasAdmin}
+                    onChange={e => setHasAdmin(e.target.checked)}
+                    style={{ width: '18px', height: '18px', accentColor: '#f59e0b', cursor: 'pointer' }} />
+                <label htmlFor="adminPermission" style={{ color: '#fde68a', fontSize: '0.9rem', fontWeight: 500, cursor: 'pointer' }}>
+                    Grant <strong>admin</strong> permission
                 </label>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
